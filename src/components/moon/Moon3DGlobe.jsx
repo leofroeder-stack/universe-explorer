@@ -111,6 +111,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     const { camera } = sceneRef.current;
     if (!camera) return;
     const newZ = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, camera.position.z + dir * 0.5));
+    if (navigator.vibrate) navigator.vibrate(8);
     animateCameraZ(newZ, 400);
   }, [animateCameraZ]);
 
@@ -263,8 +264,8 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
         raycaster.setFromCamera(mouse, camera);
         const hits = raycaster.intersectObjects(sceneRef.current.markerMeshes.filter(m => m.userData?.id));
         if (hits.length > 0 && onSelectMarker) {
+          haptic(20); // haptic feedback on marker tap
           onSelectMarker(hits[0].object.userData);
-          // marker selection handles its own idle restart timer
           return;
         }
       }
@@ -278,17 +279,61 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       }, IDLE_RESTART_MS);
     };
 
+    // ── Haptics helper ────────────────────────────────────────────────────────
+    const haptic = (duration = 10, strength = 1.0) => {
+      if (navigator.vibrate) navigator.vibrate(duration);
+      // Web Vibration API covers Android; iOS requires a workaround via AudioContext
+      // (no reliable cross-browser haptic API beyond vibrate)
+    };
+
     // ── Touch ─────────────────────────────────────────────────────────────────
+    let pinchStartDist = null; // for pinch-to-zoom
+    let pinchStartZ = null;
+
+    const getPinchDist = (touches) => {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
     const onTouchStart = (e) => {
-      isDragging = true;
-      hasMoved = false;
-      dragVelX = 0;
-      dragVelY = 0;
-      previousMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       autoRotatingRef.current = false;
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+
+      if (e.touches.length === 2) {
+        // Pinch start — cancel single-finger drag
+        isDragging = false;
+        pinchStartDist = getPinchDist(e.touches);
+        pinchStartZ = camera.position.z;
+        haptic(8); // light haptic on pinch start
+      } else {
+        isDragging = true;
+        hasMoved = false;
+        dragVelX = 0;
+        dragVelY = 0;
+        previousMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        pinchStartDist = null;
+      }
     };
+
     const onTouchMove = (e) => {
+      if (e.touches.length === 2 && pinchStartDist !== null) {
+        // Pinch-to-zoom — prevent native browser zoom
+        e.preventDefault();
+        hasMoved = true;
+        const dist = getPinchDist(e.touches);
+        const scale = pinchStartDist / dist; // >1 = zoom out, <1 = zoom in
+        const newZ = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchStartZ * scale));
+
+        // Haptic bump when hitting zoom limits
+        if ((newZ === MIN_ZOOM && camera.position.z > MIN_ZOOM + 0.05) ||
+            (newZ === MAX_ZOOM && camera.position.z < MAX_ZOOM - 0.05)) {
+          haptic(15);
+        }
+        camera.position.z = newZ;
+        return;
+      }
+
       if (!isDragging) return;
       hasMoved = true;
       const dx = e.touches[0].clientX - previousMouse.x;
@@ -300,7 +345,11 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       dragVelY = dx * 0.008;
       previousMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     };
-    const onTouchEnd = () => {
+
+    const onTouchEnd = (e) => {
+      if (e.touches.length < 2) pinchStartDist = null;
+
+      if (!isDragging) return;
       isDragging = false;
       sceneRef.current.rotationVelocity = { x: dragVelX, y: dragVelY };
       idleTimerRef.current = setTimeout(() => {
@@ -321,8 +370,8 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     container.addEventListener('mousemove', onMouseMove);
     container.addEventListener('mouseup', onMouseUp);
     container.addEventListener('touchstart', onTouchStart, { passive: true });
-    container.addEventListener('touchmove', onTouchMove, { passive: true });
-    container.addEventListener('touchend', onTouchEnd);
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    container.addEventListener('touchend', onTouchEnd, { passive: true });
     container.addEventListener('wheel', onWheel, { passive: false });
 
     let animId;
@@ -472,7 +521,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       </div>
 
       <div className="absolute bottom-14 left-4 text-[10px] text-muted-foreground/60 font-body">
-        Drag to rotate • Scroll to zoom • Click markers
+        Drag to rotate • Pinch/scroll to zoom • Tap markers
       </div>
     </div>
   );
