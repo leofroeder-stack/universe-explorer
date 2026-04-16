@@ -3,237 +3,340 @@ import * as THREE from 'three';
 import { LAYER_COLORS } from './moonData';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
-const DEFAULT_CAMERA_Z = 2.8;
-const MIN_Z = 1.5;
+const DEFAULT_CAMERA_Z = 3.2;
+const MIN_Z = 1.6;
 const MAX_Z = 6;
-
-// High-quality NASA/LRO moon textures (color map from CGI Moon Kit)
-const MOON_COLOR_URL = 'https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_2k.jpg';
-const MOON_COLOR_FALLBACK = 'https://upload.wikimedia.org/wikipedia/commons/a/a8/Solarsystemscope_texture_2k_moon.jpg';
-const MOON_BUMP_URL = 'https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/ldem_3_8bit.jpg';
 
 export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker }) {
   const containerRef = useRef(null);
   const sceneRef = useRef({});
-  const cameraRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
+  const cameraRef = useRef(null);
 
-  const handleZoom = useCallback((dir) => {
+  const handleZoom = useCallback((direction) => {
     if (!cameraRef.current) return;
-    cameraRef.current.position.z = Math.max(MIN_Z, Math.min(MAX_Z, cameraRef.current.position.z + dir * 0.45));
+    const step = 0.4;
+    const newZ = Math.max(MIN_Z, Math.min(MAX_Z, cameraRef.current.position.z + direction * step));
+    cameraRef.current.position.z = newZ;
   }, []);
 
   const handleReset = useCallback(() => {
-    if (!cameraRef.current) return;
+    if (!cameraRef.current || !sceneRef.current.moon) return;
     cameraRef.current.position.z = DEFAULT_CAMERA_Z;
-    if (sceneRef.current.moon) sceneRef.current.moon.rotation.set(0, 0, 0);
-    if (sceneRef.current.vel) { sceneRef.current.vel.x = 0; sceneRef.current.vel.y = 0.001; }
+    sceneRef.current.moon.rotation.set(0, 0, 0);
+    if (sceneRef.current.rotationVelocity) {
+      sceneRef.current.rotationVelocity.x = 0;
+      sceneRef.current.rotationVelocity.y = 0.001;
+    }
   }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const container = containerRef.current;
-    const w = container.clientWidth;
-    const h = container.clientHeight;
 
-    // ── Renderer ──────────────────────────────────────────────
+    const container = containerRef.current;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    // --- Renderer (WebGL) ---
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
+      alpha: false,
       powerPreference: 'high-performance',
     });
-    renderer.setSize(w, h);
+    renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMappingExposure = 1.1;
     container.appendChild(renderer.domElement);
 
-    // ── Scene & Camera ────────────────────────────────────────
+    // --- Scene ---
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x020508);
-    const camera = new THREE.PerspectiveCamera(42, w / h, 0.01, 1000);
+    scene.background = new THREE.Color(0x010409);
+
+    // --- Camera ---
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
     camera.position.z = DEFAULT_CAMERA_Z;
     cameraRef.current = camera;
 
-    // ── Lighting — bright enough to reveal surface detail ─────
-    // Strong ambient so no hemisphere is pitch black
-    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-    // Main sun — from upper-right
-    const sun = new THREE.DirectionalLight(0xfff8ee, 2.8);
-    sun.position.set(4, 2, 3);
-    scene.add(sun);
-    // Soft fill so shadow side shows texture
-    const fill = new THREE.DirectionalLight(0xaabbcc, 0.6);
-    fill.position.set(-4, -1, -2);
-    scene.add(fill);
+    // --- Lighting ---
+    // Dim ambient so craters catch shadow
+    const ambientLight = new THREE.AmbientLight(0x334466, 0.6);
+    scene.add(ambientLight);
 
-    // ── Stars ─────────────────────────────────────────────────
-    const STAR_COUNT = 3500;
-    const sPos = new Float32Array(STAR_COUNT * 3);
-    const sSizes = new Float32Array(STAR_COUNT);
-    const sPhases = new Float32Array(STAR_COUNT);
-    for (let i = 0; i < STAR_COUNT; i++) {
+    // Primary sun light (warm)
+    const sunLight = new THREE.DirectionalLight(0xfff5e0, 3.5);
+    sunLight.position.set(6, 2, 4);
+    scene.add(sunLight);
+
+    // Soft blue fill from opposite side (earthshine)
+    const earthShine = new THREE.DirectionalLight(0x3366cc, 0.25);
+    earthShine.position.set(-6, -2, -4);
+    scene.add(earthShine);
+
+    // --- Star field with twinkling ---
+    const starCount = 3500;
+    const starPositions = new Float32Array(starCount * 3);
+    const starSizes = new Float32Array(starCount);
+    const starPhases = new Float32Array(starCount);
+
+    for (let i = 0; i < starCount; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
-      const r = 90 + Math.random() * 120;
-      sPos[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
-      sPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-      sPos[i * 3 + 2] = r * Math.cos(phi);
-      sSizes[i]  = 0.4 + Math.random() * 2.5;
-      sPhases[i] = Math.random() * Math.PI * 2;
+      const r = 80 + Math.random() * 120;
+      starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      starPositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      starPositions[i * 3 + 2] = r * Math.cos(phi);
+      starSizes[i] = 0.5 + Math.random() * 2.5;
+      starPhases[i] = Math.random() * Math.PI * 2;
     }
+
     const starsGeo = new THREE.BufferGeometry();
-    starsGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
-    starsGeo.setAttribute('size',     new THREE.BufferAttribute(sSizes, 1));
-    starsGeo.setAttribute('phase',    new THREE.BufferAttribute(sPhases, 1));
-    const starsMat = new THREE.ShaderMaterial({
+    starsGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    starsGeo.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
+    starsGeo.setAttribute('phase', new THREE.BufferAttribute(starPhases, 1));
+
+    const starsMaterial = new THREE.ShaderMaterial({
       uniforms: { time: { value: 0 } },
       vertexShader: `
-        attribute float size; attribute float phase; uniform float time; varying float vA;
+        attribute float size;
+        attribute float phase;
+        uniform float time;
+        varying float vAlpha;
         void main() {
-          vA = 0.5 + 0.5 * sin(time * 1.4 + phase);
-          vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * (260.0 / -mv.z);
-          gl_Position = projectionMatrix * mv;
-        }`,
+          vAlpha = 0.55 + 0.45 * sin(time * 1.2 + phase);
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * (300.0 / -mvPosition.z);
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
       fragmentShader: `
-        varying float vA;
+        varying float vAlpha;
         void main() {
           float d = length(gl_PointCoord - vec2(0.5));
           if (d > 0.5) discard;
-          gl_FragColor = vec4(1.0, 1.0, 1.0, smoothstep(0.5, 0.05, d) * vA);
-        }`,
-      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+          float alpha = smoothstep(0.5, 0.1, d) * vAlpha;
+          gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
     });
-    scene.add(new THREE.Points(starsGeo, starsMat));
 
-    // ── Moon sphere ───────────────────────────────────────────
+    const stars = new THREE.Points(starsGeo, starsMaterial);
+    scene.add(stars);
+
+    // --- Moon ---
     const moonGeo = new THREE.SphereGeometry(1, 128, 128);
-    const texLoader = new THREE.TextureLoader();
+    const textureLoader = new THREE.TextureLoader();
 
-    let loadedCount = 0;
-    const onTexLoaded = () => { loadedCount++; if (loadedCount >= 1) setIsLoading(false); };
+    // Load multiple moon textures for realism
+    let loadCount = 0;
+    const onLoaded = () => { loadCount++; if (loadCount >= 2) setIsLoading(false); };
 
-    // Load color texture with fallback
-    const colorTex = texLoader.load(MOON_COLOR_URL, onTexLoaded, undefined, () => {
-      // fallback
-      const fb = texLoader.load(MOON_COLOR_FALLBACK, onTexLoaded);
-      fb.colorSpace = THREE.SRGBColorSpace;
-      if (sceneRef.current.moon) sceneRef.current.moon.material.map = fb;
-      sceneRef.current.moon?.material && (sceneRef.current.moon.material.needsUpdate = true);
-    });
-    colorTex.colorSpace = THREE.SRGBColorSpace;
+    const moonColorTex = textureLoader.load(
+      'https://upload.wikimedia.org/wikipedia/commons/a/a8/Solarsystemscope_texture_2k_moon.jpg',
+      onLoaded, undefined, onLoaded
+    );
+    moonColorTex.colorSpace = THREE.SRGBColorSpace;
 
-    const bumpTex = texLoader.load(MOON_BUMP_URL);
+    // Bump/displacement for crater realism
+    const moonBumpTex = textureLoader.load(
+      'https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/ldem_3_8bit.jpg',
+      onLoaded, undefined, onLoaded
+    );
 
-    const moonMat = new THREE.MeshStandardMaterial({
-      map: colorTex,
-      bumpMap: bumpTex,
-      bumpScale: 0.06,
-      roughness: 0.92,
+    const moonMaterial = new THREE.MeshStandardMaterial({
+      map: moonColorTex,
+      bumpMap: moonBumpTex,
+      bumpScale: 0.04,
+      roughness: 0.95,
       metalness: 0.0,
     });
 
-    const moon = new THREE.Mesh(moonGeo, moonMat);
+    const moon = new THREE.Mesh(moonGeo, moonMaterial);
     scene.add(moon);
 
-    // ── Atmosphere backglow ────────────────────────────────────
+    // --- Atmosphere / backglow (large halo behind moon) ---
+    const haloGeo = new THREE.SphereGeometry(1.45, 64, 64);
     const haloMat = new THREE.ShaderMaterial({
-      vertexShader: `varying vec3 vN; void main(){vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-      fragmentShader: `varying vec3 vN; void main(){float r=1.-abs(dot(vN,vec3(0,0,1)));float g=pow(r,2.2);gl_FragColor=vec4(mix(vec3(.15,.3,.9),vec3(.6,.8,1.),r*.4),g*.18);}`,
-      side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+      uniforms: {},
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vNormal;
+        void main() {
+          float rim = 1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0)));
+          float glow = pow(rim, 2.2);
+          vec3 col = mix(vec3(0.2, 0.4, 0.9), vec3(0.7, 0.85, 1.0), rim * 0.5);
+          gl_FragColor = vec4(col, glow * 0.22);
+        }
+      `,
+      side: THREE.BackSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
-    scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.55, 64, 64), haloMat));
+    const halo = new THREE.Mesh(haloGeo, haloMat);
+    scene.add(halo);
 
+    // Inner atmosphere rim
+    const rimGeo = new THREE.SphereGeometry(1.035, 64, 64);
     const rimMat = new THREE.ShaderMaterial({
-      vertexShader: `varying vec3 vN; void main(){vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-      fragmentShader: `varying vec3 vN; void main(){float r=1.-abs(dot(vN,vec3(0,0,1)));gl_FragColor=vec4(.65,.82,1.,pow(r,4.)*0.4);}`,
-      side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+      uniforms: {},
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vNormal;
+        void main() {
+          float rim = 1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0)));
+          float alpha = pow(rim, 3.5) * 0.5;
+          gl_FragColor = vec4(0.6, 0.8, 1.0, alpha);
+        }
+      `,
+      side: THREE.BackSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
-    scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.035, 64, 64), rimMat));
+    const rim = new THREE.Mesh(rimGeo, rimMat);
+    scene.add(rim);
 
-    const vel = { x: 0, y: 0.001 };
-    sceneRef.current = { scene, camera, renderer, moon, stars: null, starsMat, markerMeshes: [], vel };
+    // Store
+    const rotationVelocity = { x: 0, y: 0.001 };
+    sceneRef.current = { scene, camera, renderer, moon, halo, rim, stars, starsMaterial, markerMeshes: [], rotationVelocity };
 
-    // ── Interaction ────────────────────────────────────────────
-    let dragging = false, prev = { x: 0, y: 0 };
-    const onDown  = (x, y) => { dragging = true; prev = { x, y }; };
-    const onMove  = (x, y) => { if (!dragging) return; vel.x = (y - prev.y) * 0.005; vel.y = (x - prev.x) * 0.005; prev = { x, y }; };
-    const onUp    = () => { dragging = false; };
-    const onWheel = (e) => { e.preventDefault(); camera.position.z = Math.max(MIN_Z, Math.min(MAX_Z, camera.position.z + e.deltaY * 0.003)); };
+    // --- Mouse / touch drag ---
+    let isDragging = false;
+    let previousMouse = { x: 0, y: 0 };
 
-    container.addEventListener('mousedown',  (e) => onDown(e.clientX, e.clientY));
-    container.addEventListener('mousemove',  (e) => onMove(e.clientX, e.clientY));
-    window.addEventListener('mouseup', onUp);
-    container.addEventListener('touchstart', (e) => onDown(e.touches[0].clientX, e.touches[0].clientY));
-    container.addEventListener('touchmove',  (e) => onMove(e.touches[0].clientX, e.touches[0].clientY));
-    container.addEventListener('touchend', onUp);
+    const onMouseDown = (e) => {
+      isDragging = true;
+      previousMouse = { x: e.clientX, y: e.clientY };
+    };
+    const onMouseMove = (e) => {
+      if (!isDragging) return;
+      rotationVelocity.x = (e.clientY - previousMouse.y) * 0.005;
+      rotationVelocity.y = (e.clientX - previousMouse.x) * 0.005;
+      previousMouse = { x: e.clientX, y: e.clientY };
+    };
+    const onMouseUp = () => { isDragging = false; };
+
+    const onTouchStart = (e) => {
+      isDragging = true;
+      previousMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    };
+    const onTouchMove = (e) => {
+      if (!isDragging) return;
+      rotationVelocity.x = (e.touches[0].clientY - previousMouse.y) * 0.005;
+      rotationVelocity.y = (e.touches[0].clientX - previousMouse.x) * 0.005;
+      previousMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    };
+    const onTouchEnd = () => { isDragging = false; };
+
+    const onWheel = (e) => {
+      e.preventDefault();
+      camera.position.z = Math.max(MIN_Z, Math.min(MAX_Z, camera.position.z + e.deltaY * 0.003));
+    };
+
+    container.addEventListener('mousedown', onMouseDown);
+    container.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    container.addEventListener('touchstart', onTouchStart);
+    container.addEventListener('touchmove', onTouchMove);
+    container.addEventListener('touchend', onTouchEnd);
     container.addEventListener('wheel', onWheel, { passive: false });
 
-    // ── Animation ─────────────────────────────────────────────
-    let raf, t = 0;
+    // --- Animation ---
+    let animationId;
+    let time = 0;
+
     const animate = () => {
-      raf = requestAnimationFrame(animate);
-      t += 0.016;
-      starsMat.uniforms.time.value = t;
-      if (!dragging) {
-        vel.x *= 0.92; vel.y *= 0.92;
-        if (Math.abs(vel.y) < 0.0004) vel.y = 0.001;
+      animationId = requestAnimationFrame(animate);
+      time += 0.016;
+
+      starsMaterial.uniforms.time.value = time;
+
+      if (!isDragging) {
+        rotationVelocity.x *= 0.92;
+        rotationVelocity.y *= 0.92;
+        if (Math.abs(rotationVelocity.y) < 0.0004) rotationVelocity.y = 0.001;
       }
-      moon.rotation.x += vel.x;
-      moon.rotation.y += vel.y;
+
+      moon.rotation.x += rotationVelocity.x;
+      moon.rotation.y += rotationVelocity.y;
+
       renderer.render(scene, camera);
     };
     animate();
 
+    // --- Resize ---
     const onResize = () => {
-      const nw = container.clientWidth, nh = container.clientHeight;
-      camera.aspect = nw / nh; camera.updateProjectionMatrix();
-      renderer.setSize(nw, nh);
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
     };
     window.addEventListener('resize', onResize);
 
     return () => {
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(animationId);
       window.removeEventListener('resize', onResize);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('mouseup', onMouseUp);
+      container.removeEventListener('mousedown', onMouseDown);
+      container.removeEventListener('mousemove', onMouseMove);
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchmove', onTouchMove);
+      container.removeEventListener('touchend', onTouchEnd);
       container.removeEventListener('wheel', onWheel);
       renderer.dispose();
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
   }, []);
 
-  // ── Markers ────────────────────────────────────────────────
+  // --- Update markers ---
   useEffect(() => {
     const { scene, moon } = sceneRef.current;
     if (!scene || !moon) return;
+
     sceneRef.current.markerMeshes.forEach(m => moon.remove(m));
     sceneRef.current.markerMeshes = [];
 
-    markers.forEach((marker) => {
-      const latR = (marker.lat * Math.PI) / 180;
-      const lngR = ((-marker.lng + 90) * Math.PI) / 180;
-      const x = Math.cos(latR) * Math.cos(lngR);
-      const y = Math.sin(latR);
-      const z = Math.cos(latR) * Math.sin(lngR);
+    markers.forEach(marker => {
+      const latRad = (marker.lat * Math.PI) / 180;
+      const lngRad = ((-marker.lng + 90) * Math.PI) / 180;
+      const x = Math.cos(latRad) * Math.cos(lngRad);
+      const y = Math.sin(latRad);
+      const z = Math.cos(latRad) * Math.sin(lngRad);
 
       const color = new THREE.Color(LAYER_COLORS[marker.type]);
       const isSelected = selectedMarker?.id === marker.id;
+      const r = isSelected ? 0.032 : 0.018;
 
-      const dot = new THREE.Mesh(
-        new THREE.SphereGeometry(isSelected ? 0.032 : 0.019, 16, 16),
-        new THREE.MeshBasicMaterial({ color })
-      );
-      dot.position.set(x * 1.01, y * 1.01, z * 1.01);
+      const dotGeo = new THREE.SphereGeometry(r, 16, 16);
+      const dotMat = new THREE.MeshBasicMaterial({ color });
+      const dot = new THREE.Mesh(dotGeo, dotMat);
+      dot.position.set(x * 1.008, y * 1.008, z * 1.008);
       dot.userData = marker;
       moon.add(dot);
       sceneRef.current.markerMeshes.push(dot);
 
       if (isSelected) {
-        const ring = new THREE.Mesh(
-          new THREE.RingGeometry(0.042, 0.058, 32),
-          new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.75 })
-        );
+        const ringGeo = new THREE.RingGeometry(0.042, 0.058, 32);
+        const ringMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.position.copy(dot.position);
         ring.lookAt(new THREE.Vector3(0, 0, 0));
         moon.add(ring);
@@ -247,35 +350,42 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker })
       <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
       {isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#020508]/90 backdrop-blur-sm z-20">
-          <div className="w-10 h-10 border-2 border-primary/20 border-t-primary rounded-full animate-spin mb-3" />
-          <p className="text-sm text-muted-foreground font-body">Loading Moon surface…</p>
-          <p className="text-[11px] text-muted-foreground/50 font-body mt-1">NASA Lunar Reconnaissance Orbiter</p>
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <p className="text-xs text-muted-foreground font-body">Loading Moon textures…</p>
+          </div>
         </div>
       )}
 
-      {/* Zoom + Reset */}
+      {/* Zoom + Reset controls */}
       <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
-        {[
-          { icon: ZoomIn,    title: 'Zoom in',    fn: () => handleZoom(-1) },
-          { icon: ZoomOut,   title: 'Zoom out',   fn: () => handleZoom(1)  },
-          null,
-          { icon: RotateCcw, title: 'Reset view', fn: handleReset          },
-        ].map((btn, i) =>
-          btn === null
-            ? <div key={i} className="w-px h-3 bg-border mx-auto" />
-            : <button key={i} onClick={btn.fn} title={btn.title}
-                className="w-9 h-9 flex items-center justify-center bg-card/80 backdrop-blur-sm border border-border rounded-xl hover:bg-secondary transition-colors shadow-lg">
-                <btn.icon className="w-4 h-4 text-foreground" />
-              </button>
-        )}
+        <button
+          onClick={() => handleZoom(-1)}
+          className="w-9 h-9 flex items-center justify-center bg-card/80 backdrop-blur-sm border border-border rounded-xl hover:bg-secondary transition-colors shadow-lg"
+          title="Zoom in"
+        >
+          <ZoomIn className="w-4 h-4 text-foreground" />
+        </button>
+        <button
+          onClick={() => handleZoom(1)}
+          className="w-9 h-9 flex items-center justify-center bg-card/80 backdrop-blur-sm border border-border rounded-xl hover:bg-secondary transition-colors shadow-lg"
+          title="Zoom out"
+        >
+          <ZoomOut className="w-4 h-4 text-foreground" />
+        </button>
+        <div className="w-px h-3 bg-border mx-auto" />
+        <button
+          onClick={handleReset}
+          className="w-9 h-9 flex items-center justify-center bg-card/80 backdrop-blur-sm border border-border rounded-xl hover:bg-secondary transition-colors shadow-lg"
+          title="Reset view"
+        >
+          <RotateCcw className="w-4 h-4 text-foreground" />
+        </button>
       </div>
 
-      <div className="absolute bottom-4 left-4 text-[10px] text-muted-foreground/50 font-body">
-        Drag to rotate · Scroll to zoom
-      </div>
-      <div className="absolute bottom-4 right-4 text-[10px] text-muted-foreground/40 font-body">
-        NASA / LRO
+      <div className="absolute bottom-4 left-4 text-[10px] text-muted-foreground font-body opacity-60">
+        Drag to rotate · Scroll or use controls to zoom
       </div>
     </div>
   );
