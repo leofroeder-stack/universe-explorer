@@ -6,13 +6,30 @@ import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 const DEFAULT_CAMERA_Z = 3.2;
 const MIN_ZOOM = 1.5;
 const MAX_ZOOM = 6.0;
-const AUTO_SWITCH_THRESHOLD = 1.7; // switch to 2D below this z distance
+const AUTO_SWITCH_THRESHOLD = 1.7;
+const IDLE_RESTART_MS = 5000; // resume auto-rotation after 5s of no interaction
 
 export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D }) {
   const containerRef = useRef(null);
   const sceneRef = useRef({});
   const [isLoading, setIsLoading] = useState(true);
   const animatingToMarkerRef = useRef(false);
+  // idle timer ref — shared with the animation loop closure
+  const idleTimerRef = useRef(null);
+  const autoRotatingRef = useRef(true); // starts auto-rotating
+
+  // ─── Stop auto-rotation, restart after IDLE_RESTART_MS ─────────────────────
+  const pauseAndScheduleRestart = useCallback(() => {
+    autoRotatingRef.current = false;
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      autoRotatingRef.current = true;
+      if (sceneRef.current.rotationVelocity) {
+        sceneRef.current.rotationVelocity.y = 0.0008;
+        sceneRef.current.rotationVelocity.x = 0;
+      }
+    }, IDLE_RESTART_MS);
+  }, []);
 
   // ─── Smooth animate camera.position.z ───────────────────────────────────────
   const animateCameraZ = useCallback((targetZ, duration = 800, onDone) => {
@@ -35,29 +52,22 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     const { moon } = sceneRef.current;
     if (!moon) return;
 
-    // Compute target rotation: marker should appear at center front (facing +Z)
-    // lat/lng → sphere position → we want that point at (0,0,1) in moon local space
     const latRad = (marker.lat * Math.PI) / 180;
     const lngRad = (marker.lng * Math.PI) / 180;
-
-    // Target euler angles: rotY positions lng, rotX positions lat
     const targetRotY = -lngRad + Math.PI / 2;
     const targetRotX = -latRad;
 
-    // Normalize current rotation for shortest path
     let fromX = moon.rotation.x % (2 * Math.PI);
     let fromY = moon.rotation.y % (2 * Math.PI);
-    let toX = targetRotX;
-    let toY = targetRotY;
-
-    // Shortest path
-    const diffX = ((toX - fromX) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
-    const diffY = ((toY - fromY) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
-    toX = fromX + diffX;
-    toY = fromY + diffY;
+    const diffX = ((targetRotX - fromX) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+    const diffY = ((targetRotY - fromY) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+    const toX = fromX + diffX;
+    const toY = fromY + diffY;
 
     sceneRef.current.rotationVelocity = { x: 0, y: 0 };
     animatingToMarkerRef.current = true;
+    autoRotatingRef.current = false;
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
 
     const duration = 1200;
     const startTime = performance.now();
@@ -72,12 +82,19 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
         moon.rotation.x = toX;
         moon.rotation.y = toY;
         animatingToMarkerRef.current = false;
-        sceneRef.current.rotationVelocity = { x: 0, y: 0.0008 };
+        // schedule restart of auto-rotation after idle
+        idleTimerRef.current = setTimeout(() => {
+          autoRotatingRef.current = true;
+          if (sceneRef.current.rotationVelocity) {
+            sceneRef.current.rotationVelocity.y = 0.0008;
+            sceneRef.current.rotationVelocity.x = 0;
+          }
+        }, IDLE_RESTART_MS);
         if (onDone) onDone();
       }
     };
     requestAnimationFrame(tick);
-  }, [animateCameraZ]);
+  }, []);
 
   const handleZoom = useCallback((dir) => {
     const { camera } = sceneRef.current;
@@ -98,7 +115,10 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       moon.rotation.x = fromX * (1 - ease);
       moon.rotation.y = fromY * (1 - ease);
       if (t < 1) requestAnimationFrame(tick);
-      else sceneRef.current.rotationVelocity = { x: 0, y: 0.0008 };
+      else {
+        autoRotatingRef.current = true;
+        sceneRef.current.rotationVelocity = { x: 0, y: 0.0008 };
+      }
     };
     requestAnimationFrame(tick);
   }, [animateCameraZ]);
@@ -186,51 +206,112 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       rotationVelocity: { x: 0, y: 0.002 },
     };
 
-    let isDragging = false, hasMoved = false, previousMouse = { x: 0, y: 0 };
+    // ── Drag state ──────────────────────────────────────────────────────────
+    let isDragging = false;
+    let hasMoved = false;
+    let previousMouse = { x: 0, y: 0 };
+    let dragVelX = 0, dragVelY = 0; // track drag velocity for inertia
     let autoSwitchTriggered = false;
 
-    const onMouseDown = (e) => { isDragging = true; hasMoved = false; previousMouse = { x: e.clientX, y: e.clientY }; };
+    const onMouseDown = (e) => {
+      isDragging = true;
+      hasMoved = false;
+      dragVelX = 0;
+      dragVelY = 0;
+      previousMouse = { x: e.clientX, y: e.clientY };
+      // Pause auto-rotation on any click/drag
+      autoRotatingRef.current = false;
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+
     const onMouseMove = (e) => {
       if (!isDragging) return;
-      const dx = e.clientX - previousMouse.x, dy = e.clientY - previousMouse.y;
-      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) hasMoved = true;
-      sceneRef.current.rotationVelocity.x = dy * 0.005;
-      sceneRef.current.rotationVelocity.y = dx * 0.005;
+      const dx = e.clientX - previousMouse.x;
+      const dy = e.clientY - previousMouse.y;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) hasMoved = true;
+      // Direct rotation while dragging — improved responsiveness
+      moon.rotation.y += dx * 0.008;
+      moon.rotation.x += dy * 0.008;
+      // Clamp vertical tilt so globe doesn't flip
+      moon.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, moon.rotation.x));
+      // Store velocity for momentum on release
+      dragVelX = dy * 0.008;
+      dragVelY = dx * 0.008;
       previousMouse = { x: e.clientX, y: e.clientY };
     };
+
     const onMouseUp = (e) => {
       isDragging = false;
+      // Apply captured drag velocity as inertia
+      sceneRef.current.rotationVelocity = { x: dragVelX, y: dragVelY };
+
       if (!hasMoved) {
+        // It was a click — check for marker hit
         const rect = container.getBoundingClientRect();
         mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
         const hits = raycaster.intersectObjects(sceneRef.current.markerMeshes.filter(m => m.userData?.id));
-        if (hits.length > 0 && onSelectMarker) onSelectMarker(hits[0].object.userData);
+        if (hits.length > 0 && onSelectMarker) {
+          onSelectMarker(hits[0].object.userData);
+          // marker selection handles its own idle restart timer
+          return;
+        }
       }
+      // Schedule auto-rotation restart after idle
+      idleTimerRef.current = setTimeout(() => {
+        autoRotatingRef.current = true;
+        if (sceneRef.current.rotationVelocity) {
+          sceneRef.current.rotationVelocity.y = 0.0008;
+          sceneRef.current.rotationVelocity.x = 0;
+        }
+      }, IDLE_RESTART_MS);
     };
-    const onTouchStart = (e) => { isDragging = true; hasMoved = false; previousMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
+
+    // ── Touch ─────────────────────────────────────────────────────────────────
+    const onTouchStart = (e) => {
+      isDragging = true;
+      hasMoved = false;
+      dragVelX = 0;
+      dragVelY = 0;
+      previousMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      autoRotatingRef.current = false;
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
     const onTouchMove = (e) => {
       if (!isDragging) return;
       hasMoved = true;
-      const dx = e.touches[0].clientX - previousMouse.x, dy = e.touches[0].clientY - previousMouse.y;
-      sceneRef.current.rotationVelocity.x = dy * 0.005;
-      sceneRef.current.rotationVelocity.y = dx * 0.005;
+      const dx = e.touches[0].clientX - previousMouse.x;
+      const dy = e.touches[0].clientY - previousMouse.y;
+      moon.rotation.y += dx * 0.008;
+      moon.rotation.x += dy * 0.008;
+      moon.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, moon.rotation.x));
+      dragVelX = dy * 0.008;
+      dragVelY = dx * 0.008;
       previousMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     };
-    const onTouchEnd = () => { isDragging = false; };
+    const onTouchEnd = () => {
+      isDragging = false;
+      sceneRef.current.rotationVelocity = { x: dragVelX, y: dragVelY };
+      idleTimerRef.current = setTimeout(() => {
+        autoRotatingRef.current = true;
+        if (sceneRef.current.rotationVelocity) {
+          sceneRef.current.rotationVelocity.y = 0.0008;
+          sceneRef.current.rotationVelocity.x = 0;
+        }
+      }, IDLE_RESTART_MS);
+    };
 
     const onWheel = (e) => {
       e.preventDefault();
-      const newZ = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, camera.position.z + e.deltaY * 0.003));
-      camera.position.z = newZ;
+      camera.position.z = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, camera.position.z + e.deltaY * 0.003));
     };
 
     container.addEventListener('mousedown', onMouseDown);
     container.addEventListener('mousemove', onMouseMove);
     container.addEventListener('mouseup', onMouseUp);
-    container.addEventListener('touchstart', onTouchStart);
-    container.addEventListener('touchmove', onTouchMove);
+    container.addEventListener('touchstart', onTouchStart, { passive: true });
+    container.addEventListener('touchmove', onTouchMove, { passive: true });
     container.addEventListener('touchend', onTouchEnd);
     container.addEventListener('wheel', onWheel, { passive: false });
 
@@ -240,14 +321,22 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       const vel = sceneRef.current.rotationVelocity;
 
       if (!isDragging && !animatingToMarkerRef.current) {
-        vel.x *= 0.92;
-        vel.y *= 0.92;
-        if (Math.abs(vel.y) < 0.0005) vel.y = 0.0008;
-        moon.rotation.x += vel.x;
-        moon.rotation.y += vel.y;
+        if (autoRotatingRef.current) {
+          // Smooth auto-rotation
+          vel.x *= 0.95;
+          vel.y = vel.y * 0.95 + 0.0008 * 0.05;
+          moon.rotation.x += vel.x;
+          moon.rotation.y += vel.y;
+        } else {
+          // Inertia wind-down after manual drag
+          vel.x *= 0.88;
+          vel.y *= 0.88;
+          moon.rotation.x += vel.x;
+          moon.rotation.y += vel.y;
+        }
       }
 
-      // Better resolution as camera zooms in: increase bump scale
+      // Better resolution as camera zooms in
       const zoomFactor = Math.max(0, (DEFAULT_CAMERA_Z - camera.position.z) / (DEFAULT_CAMERA_Z - MIN_ZOOM));
       material.bumpScale = 0.008 + zoomFactor * 0.04;
 
@@ -273,6 +362,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
 
     return () => {
       cancelAnimationFrame(animId);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       window.removeEventListener('resize', onResize);
       container.removeEventListener('mousedown', onMouseDown);
       container.removeEventListener('mousemove', onMouseMove);
@@ -290,7 +380,6 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
   useEffect(() => {
     if (!selectedMarker) return;
     rotateMoonToMarker(selectedMarker, () => {
-      // After rotation, zoom in a bit
       animateCameraZ(2.1, 700);
     });
   }, [selectedMarker]);

@@ -1,8 +1,12 @@
-import React, { useMemo, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import React, { useMemo, useEffect, useCallback, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { LAYER_COLORS } from './moonData';
+
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 7;
+const SWITCH_TO_3D_ZOOM = 1; // switch back to 3D globe at this zoom level
 
 function createIcon(type, isSelected) {
   const color = LAYER_COLORS[type];
@@ -32,7 +36,22 @@ function MapController({ selectedMarker }) {
   return null;
 }
 
-// Zoom controls that match the 3D globe style
+// Detects when user zooms out to minimum — triggers switch back to 3D
+function ZoomOutWatcher({ onSwitchTo3D }) {
+  const triggered = React.useRef(false);
+  useMapEvents({
+    zoomend: (e) => {
+      const zoom = e.target.getZoom();
+      if (zoom <= SWITCH_TO_3D_ZOOM && !triggered.current) {
+        triggered.current = true;
+        onSwitchTo3D();
+      }
+      if (zoom > SWITCH_TO_3D_ZOOM + 0.5) triggered.current = false;
+    },
+  });
+  return null;
+}
+
 function ZoomControls() {
   const map = useMap();
   return (
@@ -61,7 +80,7 @@ function ZoomControls() {
   );
 }
 
-export default function Moon2DMap({ markers, selectedMarker, onSelectMarker }) {
+export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onSwitchTo3D }) {
   const moonTileUrl = 'https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-moon-basemap-v0-1/all/{z}/{x}/{y}.png';
 
   const markerElements = useMemo(() => {
@@ -80,8 +99,8 @@ export default function Moon2DMap({ markers, selectedMarker, onSelectMarker }) {
       <MapContainer
         center={[0, 0]}
         zoom={2}
-        minZoom={1}
-        maxZoom={7}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
         className="w-full h-full"
         style={{ background: 'hsl(222 47% 6%)' }}
         worldCopyJump={false}
@@ -90,6 +109,7 @@ export default function Moon2DMap({ markers, selectedMarker, onSelectMarker }) {
         <TileLayer url={moonTileUrl} attribution="" noWrap={true} />
         <MapController selectedMarker={selectedMarker} />
         <ZoomControls />
+        {onSwitchTo3D && <ZoomOutWatcher onSwitchTo3D={onSwitchTo3D} />}
         {markerElements}
       </MapContainer>
     </div>

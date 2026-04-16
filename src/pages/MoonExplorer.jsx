@@ -161,6 +161,7 @@ export default function MoonExplorer() {
                   markers={displayedMarkers}
                   selectedMarker={selectedMarker}
                   onSelectMarker={handleSelectMarker}
+                  onSwitchTo3D={() => triggerViewTransition('3d')}
                 />
                 {/* Time slider */}
                 <TimeSlider
