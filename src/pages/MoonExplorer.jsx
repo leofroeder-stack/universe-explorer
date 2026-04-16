@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { Globe, Map } from 'lucide-react';
+import { Globe, Map, ChevronDown } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Moon3DGlobe from '../components/moon/Moon3DGlobe';
 import Moon2DMap from '../components/moon/Moon2DMap';
@@ -8,9 +8,11 @@ import InfoPanel from '../components/moon/InfoPanel';
 import Sidebar from '../components/moon/Sidebar';
 import TimeSlider from '../components/moon/TimeSlider';
 import { missions, events, objects, LAYER_TYPES } from '../components/moon/moonData';
+import { marsMissions, marsEvents, marsObjects } from '../components/moon/marsData';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function MoonExplorer() {
+  const [planet, setPlanet] = useState('moon'); // 'moon' | 'mars'
   const [viewMode, setViewMode] = useState('3d');
   const [activeLayers, setActiveLayers] = useState([
     LAYER_TYPES.MISSIONS, LAYER_TYPES.EVENTS, LAYER_TYPES.OBJECTS,
@@ -29,13 +31,17 @@ export default function MoonExplorer() {
     );
   }, []);
 
+  const sourceMissions = planet === 'mars' ? marsMissions : missions;
+  const sourceEvents = planet === 'mars' ? marsEvents : events;
+  const sourceObjects = planet === 'mars' ? marsObjects : objects;
+
   const layerFilteredMarkers = useMemo(() => {
     const all = [];
-    if (activeLayers.includes(LAYER_TYPES.MISSIONS)) all.push(...missions);
-    if (activeLayers.includes(LAYER_TYPES.EVENTS)) all.push(...events);
-    if (activeLayers.includes(LAYER_TYPES.OBJECTS)) all.push(...objects);
+    if (activeLayers.includes(LAYER_TYPES.MISSIONS)) all.push(...sourceMissions);
+    if (activeLayers.includes(LAYER_TYPES.EVENTS)) all.push(...sourceEvents);
+    if (activeLayers.includes(LAYER_TYPES.OBJECTS)) all.push(...sourceObjects);
     return all;
-  }, [activeLayers]);
+  }, [activeLayers, planet]);
 
   const displayedMarkers = useMemo(() => {
     if (timeFilteredMarkers === null) return layerFilteredMarkers;
@@ -94,11 +100,41 @@ export default function MoonExplorer() {
             </div>
             <div>
               <h1 className="font-heading font-bold text-lg leading-tight">Luna Atlas</h1>
-              <p className="text-[11px] text-muted-foreground font-body">Interactive Moon Explorer</p>
+              <p className="text-[11px] text-muted-foreground font-body">
+                {planet === 'mars' ? 'Interactive Mars Explorer' : 'Interactive Moon Explorer'}
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Planet Selector */}
+            <div className="flex items-center gap-1 bg-secondary rounded-xl p-1 border border-border">
+              {[
+                { key: 'moon', emoji: '🌕', label: 'Moon' },
+                { key: 'mars', emoji: '🔴', label: 'Mars' },
+              ].map(({ key, emoji, label }) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    if (key !== planet) {
+                      setPlanet(key);
+                      setSelectedMarker(null);
+                      setTimeFilteredMarkers(null);
+                      setSliderYear(null);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body font-medium transition-all ${
+                    planet === key
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <span>{emoji}</span>
+                  <span className="hidden sm:inline">{label}</span>
+                </button>
+              ))}
+            </div>
+
             <div className="hidden md:block">
               <LayerControls activeLayers={activeLayers} onToggleLayer={toggleLayer} />
             </div>
@@ -142,10 +178,12 @@ export default function MoonExplorer() {
                 transition={{ duration: 0.4, ease: 'easeInOut' }}
               >
                 <Moon3DGlobe
+                  key={planet}
                   markers={displayedMarkers}
                   selectedMarker={selectedMarker}
                   onSelectMarker={handleSelectMarker}
                   onAutoSwitch2D={handleAutoSwitch2D}
+                  planet={planet}
                 />
               </motion.div>
             ) : (
@@ -162,6 +200,7 @@ export default function MoonExplorer() {
                   selectedMarker={selectedMarker}
                   onSelectMarker={handleSelectMarker}
                   onSwitchTo3D={() => triggerViewTransition('3d')}
+                  planet={planet}
                 />
                 {/* Time slider */}
                 <TimeSlider

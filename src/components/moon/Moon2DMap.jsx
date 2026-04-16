@@ -80,8 +80,13 @@ function ZoomControls() {
   );
 }
 
-export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onSwitchTo3D }) {
-  const moonTileUrl = 'https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-moon-basemap-v0-1/all/{z}/{x}/{y}.png';
+const TILE_URLS = {
+  moon: 'https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-moon-basemap-v0-1/all/{z}/{x}/{y}.png',
+  mars: 'https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-mars-basemap-v0-1/all/{z}/{x}/{y}.png',
+};
+
+export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onSwitchTo3D, planet = 'moon' }) {
+  const moonTileUrl = TILE_URLS[planet] || TILE_URLS.moon;
 
   const markerElements = useMemo(() => {
     return markers.map(marker => (

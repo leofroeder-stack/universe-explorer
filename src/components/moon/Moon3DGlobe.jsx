@@ -9,7 +9,17 @@ const MAX_ZOOM = 6.0;
 const AUTO_SWITCH_THRESHOLD = 1.7;
 const IDLE_RESTART_MS = 5000; // resume auto-rotation after 5s of no interaction
 
-export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D }) {
+const PLANET_TEXTURES = {
+  moon: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg',
+  mars: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/USGS-MarsMap-thnewcolor-Nasa-PIA00591.jpg/1280px-USGS-MarsMap-thnewcolor-Nasa-PIA00591.jpg',
+};
+
+const PLANET_GLOW = {
+  moon: 'vec4(0.15, 0.2, 0.5, 1.0)',
+  mars: 'vec4(0.6, 0.25, 0.1, 1.0)',
+};
+
+export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon' }) {
   const containerRef = useRef(null);
   const sceneRef = useRef({});
   const [isLoading, setIsLoading] = useState(true);
@@ -154,15 +164,14 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     const textureLoader = new THREE.TextureLoader();
     textureLoader.crossOrigin = 'anonymous';
 
+    const textureUrl = PLANET_TEXTURES[planet] || PLANET_TEXTURES.moon;
     const moonTexture = textureLoader.load(
-      'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg',
+      textureUrl,
       () => setIsLoading(false),
       undefined,
       () => setIsLoading(false)
     );
-    const bumpMap = textureLoader.load(
-      'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg'
-    );
+    const bumpMap = textureLoader.load(textureUrl);
 
     const material = new THREE.MeshStandardMaterial({
       map: moonTexture,
@@ -179,7 +188,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     const glowGeometry = new THREE.SphereGeometry(1.035, 64, 64);
     const glowMaterial = new THREE.ShaderMaterial({
       vertexShader: `varying vec3 vNormal; void main() { vNormal = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader: `varying vec3 vNormal; void main() { float intensity = pow(0.55 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 4.0); gl_FragColor = vec4(0.15, 0.2, 0.5, 1.0) * intensity * 0.25; }`,
+      fragmentShader: `varying vec3 vNormal; void main() { float intensity = pow(0.55 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 4.0); gl_FragColor = ${PLANET_GLOW[planet] || PLANET_GLOW.moon} * intensity * 0.25; }`,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending,
       transparent: true,
@@ -431,7 +440,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
         <div className="absolute inset-0 flex items-center justify-center bg-background/50">
           <div className="flex flex-col items-center gap-3">
             <div className="w-10 h-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            <p className="text-xs text-muted-foreground font-body">Loading Moon textures…</p>
+            <p className="text-xs text-muted-foreground font-body">Loading {planet === 'mars' ? 'Mars' : 'Moon'} textures…</p>
           </div>
         </div>
       )}
