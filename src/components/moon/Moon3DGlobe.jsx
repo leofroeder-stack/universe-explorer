@@ -60,34 +60,25 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker })
     const geometry = new THREE.SphereGeometry(1, 128, 128);
 
     const textureLoader = new THREE.TextureLoader();
+    textureLoader.crossOrigin = 'anonymous';
 
-    // NASA CGI Moon texture (high res)
+    // Reliable moon texture from Solar System Scope (CORS-friendly CDN)
     const moonTexture = textureLoader.load(
-      'https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_1k.jpg',
+      'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg',
       () => setIsLoading(false),
       undefined,
-      () => {
-        // Fallback to Wikipedia texture
-        moonTexture.image = null;
-        const fallbackTexture = textureLoader.load(
-          'https://upload.wikimedia.org/wikipedia/commons/a/a8/Solarsystemscope_texture_2k_moon.jpg',
-          () => setIsLoading(false)
-        );
-        material.map = fallbackTexture;
-        material.needsUpdate = true;
-        setIsLoading(false);
-      }
+      () => setIsLoading(false)
     );
 
-    // NASA bump map for surface detail
+    // Bump map from three.js examples repo — same reliable source
     const bumpMap = textureLoader.load(
-      'https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/ldem_3_8bit.jpg'
+      'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg'
     );
 
     const material = new THREE.MeshStandardMaterial({
       map: moonTexture,
       bumpMap: bumpMap,
-      bumpScale: 0.018,
+      bumpScale: 0.012,
       roughness: 0.95,
       metalness: 0.0,
     });
