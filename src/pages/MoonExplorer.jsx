@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { Globe, Map, ChevronDown } from 'lucide-react';
+import { Globe, Map } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Moon3DGlobe from '../components/moon/Moon3DGlobe';
 import Moon2DMap from '../components/moon/Moon2DMap';
@@ -7,6 +7,8 @@ import LayerControls from '../components/moon/LayerControls';
 import InfoPanel from '../components/moon/InfoPanel';
 import Sidebar from '../components/moon/Sidebar';
 import TimeSlider from '../components/moon/TimeSlider';
+import MobileMenuDrawer from '../components/moon/MobileMenuDrawer';
+import MoonPhaseOverlay from '../components/moon/MoonPhaseOverlay';
 import { missions, events, objects, LAYER_TYPES } from '../components/moon/moonData';
 import { marsMissions, marsEvents, marsObjects } from '../components/moon/marsData';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -95,6 +97,13 @@ export default function MoonExplorer() {
       <header className="flex-shrink-0 border-b border-border bg-card/50 backdrop-blur-xl">
         <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
+            <MobileMenuDrawer
+              markers={displayedMarkers}
+              selectedMarker={selectedMarker}
+              onSelectMarker={handleSelectMarker}
+              activeLayers={activeLayers}
+              onToggleLayer={toggleLayer}
+            />
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
               <Globe className="w-5 h-5 text-primary" />
             </div>
@@ -150,9 +159,7 @@ export default function MoonExplorer() {
             </Tabs>
           </div>
         </div>
-        <div className="md:hidden px-4 pb-3">
-          <LayerControls activeLayers={activeLayers} onToggleLayer={toggleLayer} />
-        </div>
+
       </header>
 
       {/* Main content */}

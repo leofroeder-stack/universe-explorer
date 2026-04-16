@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { LAYER_COLORS } from './moonData';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import MoonPhaseOverlay from './MoonPhaseOverlay';
 
 const DEFAULT_CAMERA_Z = 3.2;
 const MIN_ZOOM = 1.5;
@@ -445,19 +446,29 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
         </div>
       )}
 
-      {/* Zoom & Reset Controls */}
+      {/* Zoom, Reset & Phase Controls */}
       <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
-        {[
-          { label: 'Zoom In', icon: ZoomIn, action: () => handleZoom(-1) },
-          { label: 'Zoom Out', icon: ZoomOut, action: () => handleZoom(1) },
-          { label: 'Reset View', icon: RotateCcw, action: handleReset },
-        ].map(({ label, icon: Icon, action }) => (
-          <button key={label} onClick={action}
-            className="w-9 h-9 rounded-xl bg-card/90 backdrop-blur-xl border border-border flex items-center justify-center hover:bg-secondary transition-colors shadow-lg"
-            title={label}>
-            <Icon className="w-4 h-4 text-foreground" />
-          </button>
-        ))}
+        <button onClick={() => handleZoom(-1)}
+          className="w-9 h-9 rounded-xl bg-card/90 backdrop-blur-xl border border-border flex items-center justify-center hover:bg-secondary transition-colors shadow-lg"
+          title="Zoom In">
+          <ZoomIn className="w-4 h-4 text-foreground" />
+        </button>
+        <button onClick={() => handleZoom(1)}
+          className="w-9 h-9 rounded-xl bg-card/90 backdrop-blur-xl border border-border flex items-center justify-center hover:bg-secondary transition-colors shadow-lg"
+          title="Zoom Out">
+          <ZoomOut className="w-4 h-4 text-foreground" />
+        </button>
+        <button onClick={handleReset}
+          className="w-9 h-9 rounded-xl bg-card/90 backdrop-blur-xl border border-border flex items-center justify-center hover:bg-secondary transition-colors shadow-lg"
+          title="Reset View">
+          <RotateCcw className="w-4 h-4 text-foreground" />
+        </button>
+        {/* Moon Phase button — only for moon */}
+        {planet === 'moon' && (
+          <div className="relative">
+            <MoonPhaseOverlay />
+          </div>
+        )}
       </div>
 
       <div className="absolute bottom-14 left-4 text-[10px] text-muted-foreground/60 font-body">
