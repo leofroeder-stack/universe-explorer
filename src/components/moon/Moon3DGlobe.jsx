@@ -4,31 +4,108 @@ import { LAYER_COLORS } from './moonData';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 const DEFAULT_CAMERA_Z = 3.2;
-const MIN_ZOOM = 1.8;
+const MIN_ZOOM = 1.5;
 const MAX_ZOOM = 6.0;
+const AUTO_SWITCH_THRESHOLD = 1.7; // switch to 2D below this z distance
 
-export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker }) {
+export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D }) {
   const containerRef = useRef(null);
   const sceneRef = useRef({});
   const [isLoading, setIsLoading] = useState(true);
+  const animatingToMarkerRef = useRef(false);
+
+  // ─── Smooth animate camera.position.z ───────────────────────────────────────
+  const animateCameraZ = useCallback((targetZ, duration = 800, onDone) => {
+    const { camera } = sceneRef.current;
+    if (!camera) return;
+    const startZ = camera.position.z;
+    const startTime = performance.now();
+    const tick = (now) => {
+      const t = Math.min((now - startTime) / duration, 1);
+      const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+      camera.position.z = startZ + (targetZ - startZ) * ease;
+      if (t < 1) requestAnimationFrame(tick);
+      else { camera.position.z = targetZ; if (onDone) onDone(); }
+    };
+    requestAnimationFrame(tick);
+  }, []);
+
+  // ─── Rotate moon so marker faces camera ────────────────────────────────────
+  const rotateMoonToMarker = useCallback((marker, onDone) => {
+    const { moon } = sceneRef.current;
+    if (!moon) return;
+
+    // Compute target rotation: marker should appear at center front (facing +Z)
+    // lat/lng → sphere position → we want that point at (0,0,1) in moon local space
+    const latRad = (marker.lat * Math.PI) / 180;
+    const lngRad = (marker.lng * Math.PI) / 180;
+
+    // Target euler angles: rotY positions lng, rotX positions lat
+    const targetRotY = -lngRad + Math.PI / 2;
+    const targetRotX = -latRad;
+
+    // Normalize current rotation for shortest path
+    let fromX = moon.rotation.x % (2 * Math.PI);
+    let fromY = moon.rotation.y % (2 * Math.PI);
+    let toX = targetRotX;
+    let toY = targetRotY;
+
+    // Shortest path
+    const diffX = ((toX - fromX) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+    const diffY = ((toY - fromY) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+    toX = fromX + diffX;
+    toY = fromY + diffY;
+
+    sceneRef.current.rotationVelocity = { x: 0, y: 0 };
+    animatingToMarkerRef.current = true;
+
+    const duration = 1200;
+    const startTime = performance.now();
+    const tick = (now) => {
+      const t = Math.min((now - startTime) / duration, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      moon.rotation.x = fromX + diffX * ease;
+      moon.rotation.y = fromY + diffY * ease;
+      if (t < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        moon.rotation.x = toX;
+        moon.rotation.y = toY;
+        animatingToMarkerRef.current = false;
+        sceneRef.current.rotationVelocity = { x: 0, y: 0.0008 };
+        if (onDone) onDone();
+      }
+    };
+    requestAnimationFrame(tick);
+  }, [animateCameraZ]);
 
   const handleZoom = useCallback((dir) => {
     const { camera } = sceneRef.current;
     if (!camera) return;
-    camera.position.z = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, camera.position.z + dir * 0.5));
-  }, []);
+    const newZ = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, camera.position.z + dir * 0.5));
+    animateCameraZ(newZ, 400);
+  }, [animateCameraZ]);
 
   const handleReset = useCallback(() => {
     const { camera, moon } = sceneRef.current;
     if (!camera || !moon) return;
-    camera.position.z = DEFAULT_CAMERA_Z;
-    moon.rotation.set(0, 0, 0);
-    sceneRef.current.rotationVelocity = { x: 0, y: 0.002 };
-  }, []);
+    animateCameraZ(DEFAULT_CAMERA_Z, 600);
+    const fromX = moon.rotation.x, fromY = moon.rotation.y;
+    const startTime = performance.now();
+    const tick = (now) => {
+      const t = Math.min((now - startTime) / 600, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      moon.rotation.x = fromX * (1 - ease);
+      moon.rotation.y = fromY * (1 - ease);
+      if (t < 1) requestAnimationFrame(tick);
+      else sceneRef.current.rotationVelocity = { x: 0, y: 0.0008 };
+    };
+    requestAnimationFrame(tick);
+  }, [animateCameraZ]);
 
+  // ─── Scene setup ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
-
     const container = containerRef.current;
     const width = container.clientWidth;
     const height = container.clientHeight;
@@ -43,34 +120,26 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker })
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
 
-    // Realistic lighting — sun-like key light, dim ambient
     const ambientLight = new THREE.AmbientLight(0x221e3b, 1.2);
     scene.add(ambientLight);
-
     const sunLight = new THREE.DirectionalLight(0xfff4e0, 4.5);
     sunLight.position.set(8, 2, 6);
     sunLight.castShadow = true;
     scene.add(sunLight);
-
-    // Subtle blue-ish fill from space
     const fillLight = new THREE.DirectionalLight(0x334488, 0.4);
     fillLight.position.set(-8, -2, -6);
     scene.add(fillLight);
 
     const geometry = new THREE.SphereGeometry(1, 128, 128);
-
     const textureLoader = new THREE.TextureLoader();
     textureLoader.crossOrigin = 'anonymous';
 
-    // Reliable moon texture from Solar System Scope (CORS-friendly CDN)
     const moonTexture = textureLoader.load(
       'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg',
       () => setIsLoading(false),
       undefined,
       () => setIsLoading(false)
     );
-
-    // Bump map from three.js examples repo — same reliable source
     const bumpMap = textureLoader.load(
       'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg'
     );
@@ -87,105 +156,75 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker })
     moon.receiveShadow = true;
     scene.add(moon);
 
-    // Subtle atmospheric glow
     const glowGeometry = new THREE.SphereGeometry(1.035, 64, 64);
     const glowMaterial = new THREE.ShaderMaterial({
-      vertexShader: `
-        varying vec3 vNormal;
-        void main() {
-          vNormal = normalize(normalMatrix * normal);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vNormal;
-        void main() {
-          float intensity = pow(0.55 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 4.0);
-          gl_FragColor = vec4(0.15, 0.2, 0.5, 1.0) * intensity * 0.25;
-        }
-      `,
+      vertexShader: `varying vec3 vNormal; void main() { vNormal = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `varying vec3 vNormal; void main() { float intensity = pow(0.55 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 4.0); gl_FragColor = vec4(0.15, 0.2, 0.5, 1.0) * intensity * 0.25; }`,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending,
       transparent: true,
     });
-    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-    scene.add(glow);
+    scene.add(new THREE.Mesh(glowGeometry, glowMaterial));
 
-    // Stars
     const starsGeo = new THREE.BufferGeometry();
-    const starPos = [];
-    const starColors = [];
+    const starPos = [], starColors = [];
     for (let i = 0; i < 3000; i++) {
       starPos.push((Math.random() - 0.5) * 200, (Math.random() - 0.5) * 200, (Math.random() - 0.5) * 200);
-      const r = 0.8 + Math.random() * 0.2;
-      const g = 0.8 + Math.random() * 0.2;
-      const b = 0.9 + Math.random() * 0.1;
-      starColors.push(r, g, b);
+      starColors.push(0.8 + Math.random() * 0.2, 0.8 + Math.random() * 0.2, 0.9 + Math.random() * 0.1);
     }
     starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
     starsGeo.setAttribute('color', new THREE.Float32BufferAttribute(starColors, 3));
-    const starsMat = new THREE.PointsMaterial({ size: 0.08, vertexColors: true, transparent: true, opacity: 0.9 });
-    const stars = new THREE.Points(starsGeo, starsMat);
+    const stars = new THREE.Points(starsGeo, new THREE.PointsMaterial({ size: 0.08, vertexColors: true, transparent: true, opacity: 0.9 }));
     scene.add(stars);
 
-    // Raycaster for click selection
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
-    sceneRef.current = { scene, camera, renderer, moon, glow, stars, markerMeshes: [], markerData: [], rotationVelocity: { x: 0, y: 0.002 } };
-
-    let isDragging = false;
-    let hasMoved = false;
-    let previousMouse = { x: 0, y: 0 };
-
-    const onMouseDown = (e) => {
-      isDragging = true;
-      hasMoved = false;
-      previousMouse = { x: e.clientX, y: e.clientY };
+    sceneRef.current = {
+      scene, camera, renderer, moon, stars,
+      markerMeshes: [], material,
+      rotationVelocity: { x: 0, y: 0.002 },
     };
 
+    let isDragging = false, hasMoved = false, previousMouse = { x: 0, y: 0 };
+    let autoSwitchTriggered = false;
+
+    const onMouseDown = (e) => { isDragging = true; hasMoved = false; previousMouse = { x: e.clientX, y: e.clientY }; };
     const onMouseMove = (e) => {
       if (!isDragging) return;
-      const deltaX = e.clientX - previousMouse.x;
-      const deltaY = e.clientY - previousMouse.y;
-      if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) hasMoved = true;
-      sceneRef.current.rotationVelocity.x = deltaY * 0.005;
-      sceneRef.current.rotationVelocity.y = deltaX * 0.005;
+      const dx = e.clientX - previousMouse.x, dy = e.clientY - previousMouse.y;
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) hasMoved = true;
+      sceneRef.current.rotationVelocity.x = dy * 0.005;
+      sceneRef.current.rotationVelocity.y = dx * 0.005;
       previousMouse = { x: e.clientX, y: e.clientY };
     };
-
     const onMouseUp = (e) => {
       isDragging = false;
       if (!hasMoved) {
-        // Click — raycast for marker selection
         const rect = container.getBoundingClientRect();
         mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
-        const dotMeshes = sceneRef.current.markerMeshes.filter(m => m.userData?.id);
-        const intersects = raycaster.intersectObjects(dotMeshes);
-        if (intersects.length > 0) {
-          const hit = intersects[0].object.userData;
-          if (onSelectMarker) onSelectMarker(hit);
-        }
+        const hits = raycaster.intersectObjects(sceneRef.current.markerMeshes.filter(m => m.userData?.id));
+        if (hits.length > 0 && onSelectMarker) onSelectMarker(hits[0].object.userData);
       }
     };
-
-    const onTouchStart = (e) => {
-      isDragging = true;
-      hasMoved = false;
-      previousMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    };
+    const onTouchStart = (e) => { isDragging = true; hasMoved = false; previousMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
     const onTouchMove = (e) => {
       if (!isDragging) return;
-      const deltaX = e.touches[0].clientX - previousMouse.x;
-      const deltaY = e.touches[0].clientY - previousMouse.y;
       hasMoved = true;
-      sceneRef.current.rotationVelocity.x = deltaY * 0.005;
-      sceneRef.current.rotationVelocity.y = deltaX * 0.005;
+      const dx = e.touches[0].clientX - previousMouse.x, dy = e.touches[0].clientY - previousMouse.y;
+      sceneRef.current.rotationVelocity.x = dy * 0.005;
+      sceneRef.current.rotationVelocity.y = dx * 0.005;
       previousMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     };
     const onTouchEnd = () => { isDragging = false; };
+
+    const onWheel = (e) => {
+      e.preventDefault();
+      const newZ = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, camera.position.z + e.deltaY * 0.003));
+      camera.position.z = newZ;
+    };
 
     container.addEventListener('mousedown', onMouseDown);
     container.addEventListener('mousemove', onMouseMove);
@@ -193,32 +232,39 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker })
     container.addEventListener('touchstart', onTouchStart);
     container.addEventListener('touchmove', onTouchMove);
     container.addEventListener('touchend', onTouchEnd);
-
-    const onWheel = (e) => {
-      e.preventDefault();
-      camera.position.z = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, camera.position.z + e.deltaY * 0.003));
-    };
     container.addEventListener('wheel', onWheel, { passive: false });
 
-    let animationId;
+    let animId;
     const animate = () => {
-      animationId = requestAnimationFrame(animate);
+      animId = requestAnimationFrame(animate);
       const vel = sceneRef.current.rotationVelocity;
-      if (!isDragging) {
+
+      if (!isDragging && !animatingToMarkerRef.current) {
         vel.x *= 0.92;
         vel.y *= 0.92;
         if (Math.abs(vel.y) < 0.0005) vel.y = 0.0008;
+        moon.rotation.x += vel.x;
+        moon.rotation.y += vel.y;
       }
-      moon.rotation.x += vel.x;
-      moon.rotation.y += vel.y;
+
+      // Better resolution as camera zooms in: increase bump scale
+      const zoomFactor = Math.max(0, (DEFAULT_CAMERA_Z - camera.position.z) / (DEFAULT_CAMERA_Z - MIN_ZOOM));
+      material.bumpScale = 0.008 + zoomFactor * 0.04;
+
+      // Auto-switch to 2D when zoomed in very close
+      if (camera.position.z <= AUTO_SWITCH_THRESHOLD && !autoSwitchTriggered) {
+        autoSwitchTriggered = true;
+        if (onAutoSwitch2D) onAutoSwitch2D();
+      }
+      if (camera.position.z > AUTO_SWITCH_THRESHOLD + 0.2) autoSwitchTriggered = false;
+
       stars.rotation.y += 0.00005;
       renderer.render(scene, camera);
     };
     animate();
 
     const onResize = () => {
-      const w = container.clientWidth;
-      const h = container.clientHeight;
+      const w = container.clientWidth, h = container.clientHeight;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
@@ -226,7 +272,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker })
     window.addEventListener('resize', onResize);
 
     return () => {
-      cancelAnimationFrame(animationId);
+      cancelAnimationFrame(animId);
       window.removeEventListener('resize', onResize);
       container.removeEventListener('mousedown', onMouseDown);
       container.removeEventListener('mousemove', onMouseMove);
@@ -240,11 +286,19 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker })
     };
   }, []);
 
-  // Update markers
+  // ─── Rotate to selected marker ─────────────────────────────────────────────
   useEffect(() => {
-    const { scene, moon } = sceneRef.current;
-    if (!scene || !moon) return;
+    if (!selectedMarker) return;
+    rotateMoonToMarker(selectedMarker, () => {
+      // After rotation, zoom in a bit
+      animateCameraZ(2.1, 700);
+    });
+  }, [selectedMarker]);
 
+  // ─── Update markers ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const { moon } = sceneRef.current;
+    if (!moon) return;
     sceneRef.current.markerMeshes.forEach(m => moon.remove(m));
     sceneRef.current.markerMeshes = [];
 
@@ -258,19 +312,21 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker })
       const color = LAYER_COLORS[marker.type];
       const isSelected = selectedMarker?.id === marker.id;
 
-      const dotGeo = new THREE.SphereGeometry(isSelected ? 0.032 : 0.018, 16, 16);
-      const dotMat = new THREE.MeshBasicMaterial({ color });
-      const dot = new THREE.Mesh(dotGeo, dotMat);
+      const dot = new THREE.Mesh(
+        new THREE.SphereGeometry(isSelected ? 0.032 : 0.018, 16, 16),
+        new THREE.MeshBasicMaterial({ color })
+      );
       dot.position.set(x * 1.008, y * 1.008, z * 1.008);
       dot.userData = marker;
       moon.add(dot);
       sceneRef.current.markerMeshes.push(dot);
 
       if (isSelected) {
-        const ringGeo = new THREE.RingGeometry(0.036, 0.052, 32);
-        const ringMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.position.set(x * 1.009, y * 1.009, z * 1.009);
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(0.036, 0.055, 32),
+          new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.75 })
+        );
+        ring.position.set(x * 1.01, y * 1.01, z * 1.01);
         ring.lookAt(new THREE.Vector3(0, 0, 0));
         moon.add(ring);
         sceneRef.current.markerMeshes.push(ring);
@@ -286,34 +342,24 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker })
         <div className="absolute inset-0 flex items-center justify-center bg-background/50">
           <div className="flex flex-col items-center gap-3">
             <div className="w-10 h-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            <p className="text-xs text-muted-foreground font-body">Loading NASA textures…</p>
+            <p className="text-xs text-muted-foreground font-body">Loading Moon textures…</p>
           </div>
         </div>
       )}
 
       {/* Zoom & Reset Controls */}
       <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
-        <button
-          onClick={() => handleZoom(-1)}
-          className="w-9 h-9 rounded-xl bg-card/90 backdrop-blur-xl border border-border flex items-center justify-center hover:bg-secondary transition-colors shadow-lg"
-          title="Zoom In"
-        >
-          <ZoomIn className="w-4 h-4 text-foreground" />
-        </button>
-        <button
-          onClick={() => handleZoom(1)}
-          className="w-9 h-9 rounded-xl bg-card/90 backdrop-blur-xl border border-border flex items-center justify-center hover:bg-secondary transition-colors shadow-lg"
-          title="Zoom Out"
-        >
-          <ZoomOut className="w-4 h-4 text-foreground" />
-        </button>
-        <button
-          onClick={handleReset}
-          className="w-9 h-9 rounded-xl bg-card/90 backdrop-blur-xl border border-border flex items-center justify-center hover:bg-secondary transition-colors shadow-lg"
-          title="Reset View"
-        >
-          <RotateCcw className="w-4 h-4 text-foreground" />
-        </button>
+        {[
+          { label: 'Zoom In', icon: ZoomIn, action: () => handleZoom(-1) },
+          { label: 'Zoom Out', icon: ZoomOut, action: () => handleZoom(1) },
+          { label: 'Reset View', icon: RotateCcw, action: handleReset },
+        ].map(({ label, icon: Icon, action }) => (
+          <button key={label} onClick={action}
+            className="w-9 h-9 rounded-xl bg-card/90 backdrop-blur-xl border border-border flex items-center justify-center hover:bg-secondary transition-colors shadow-lg"
+            title={label}>
+            <Icon className="w-4 h-4 text-foreground" />
+          </button>
+        ))}
       </div>
 
       <div className="absolute bottom-14 left-4 text-[10px] text-muted-foreground/60 font-body">

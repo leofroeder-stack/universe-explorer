@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Globe, Map } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Moon3DGlobe from '../components/moon/Moon3DGlobe';
@@ -8,17 +8,20 @@ import InfoPanel from '../components/moon/InfoPanel';
 import Sidebar from '../components/moon/Sidebar';
 import TimeSlider from '../components/moon/TimeSlider';
 import { missions, events, objects, LAYER_TYPES } from '../components/moon/moonData';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function MoonExplorer() {
   const [viewMode, setViewMode] = useState('3d');
   const [activeLayers, setActiveLayers] = useState([
-    LAYER_TYPES.MISSIONS,
-    LAYER_TYPES.EVENTS,
-    LAYER_TYPES.OBJECTS,
+    LAYER_TYPES.MISSIONS, LAYER_TYPES.EVENTS, LAYER_TYPES.OBJECTS,
   ]);
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [timeFilteredMarkers, setTimeFilteredMarkers] = useState(null);
   const [sliderYear, setSliderYear] = useState(null);
+  // Transition animation state
+  const [transitioning, setTransitioning] = useState(false);
+  const [transitionPhase, setTransitionPhase] = useState(null); // 'zoom-in' | 'flash' | null
+  const transitionTargetRef = useRef(null); // '2d' or '3d'
 
   const toggleLayer = useCallback((layer) => {
     setActiveLayers(prev =>
@@ -34,7 +37,6 @@ export default function MoonExplorer() {
     return all;
   }, [activeLayers]);
 
-  // When time filter is active (2D map), intersect with layer filter
   const displayedMarkers = useMemo(() => {
     if (timeFilteredMarkers === null) return layerFilteredMarkers;
     const ids = new Set(timeFilteredMarkers.map(m => m.id));
@@ -49,6 +51,37 @@ export default function MoonExplorer() {
     setTimeFilteredMarkers(filtered);
     setSliderYear(year);
   }, []);
+
+  // ─── Animated view switch ─────────────────────────────────────────────────
+  const triggerViewTransition = useCallback((targetView) => {
+    if (transitioning || viewMode === targetView) return;
+    transitionTargetRef.current = targetView;
+    setTransitioning(true);
+    setTransitionPhase('zoom-in');
+
+    // Phase 1: zoom-in flash (600ms), Phase 2: white flash (200ms), then switch
+    setTimeout(() => {
+      setTransitionPhase('flash');
+      setTimeout(() => {
+        setViewMode(targetView);
+        if (targetView === '3d') setTimeFilteredMarkers(null);
+        setTransitionPhase('fade-out');
+        setTimeout(() => {
+          setTransitioning(false);
+          setTransitionPhase(null);
+        }, 400);
+      }, 200);
+    }, 600);
+  }, [transitioning, viewMode]);
+
+  // Called by globe when zoom threshold crossed
+  const handleAutoSwitch2D = useCallback(() => {
+    triggerViewTransition('2d');
+  }, [triggerViewTransition]);
+
+  const handleTabChange = (v) => {
+    if (v !== viewMode) triggerViewTransition(v);
+  };
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
@@ -69,22 +102,18 @@ export default function MoonExplorer() {
             <div className="hidden md:block">
               <LayerControls activeLayers={activeLayers} onToggleLayer={toggleLayer} />
             </div>
-            <Tabs value={viewMode} onValueChange={(v) => { setViewMode(v); if (v === '3d') setTimeFilteredMarkers(null); }}>
+            <Tabs value={viewMode} onValueChange={handleTabChange}>
               <TabsList className="bg-secondary">
                 <TabsTrigger value="3d" className="gap-1.5 text-xs">
-                  <Globe className="w-3.5 h-3.5" />
-                  3D Globe
+                  <Globe className="w-3.5 h-3.5" /> 3D Globe
                 </TabsTrigger>
                 <TabsTrigger value="2d" className="gap-1.5 text-xs">
-                  <Map className="w-3.5 h-3.5" />
-                  2D Map
+                  <Map className="w-3.5 h-3.5" /> 2D Map
                 </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
         </div>
-
-        {/* Mobile layer controls */}
         <div className="md:hidden px-4 pb-3">
           <LayerControls activeLayers={activeLayers} onToggleLayer={toggleLayer} />
         </div>
@@ -92,7 +121,6 @@ export default function MoonExplorer() {
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
         <aside className="hidden lg:block w-72 border-r border-border bg-card/30 flex-shrink-0 overflow-hidden">
           <Sidebar
             markers={displayedMarkers}
@@ -101,35 +129,82 @@ export default function MoonExplorer() {
           />
         </aside>
 
-        {/* Map area */}
-        <main className="flex-1 relative">
-          {viewMode === '3d' ? (
-            <Moon3DGlobe
-              markers={displayedMarkers}
-              selectedMarker={selectedMarker}
-              onSelectMarker={handleSelectMarker}
-            />
-          ) : (
-            <Moon2DMap
-              markers={displayedMarkers}
-              selectedMarker={selectedMarker}
-              onSelectMarker={handleSelectMarker}
-            />
-          )}
+        <main className="flex-1 relative overflow-hidden">
+          {/* Both views rendered, animated */}
+          <AnimatePresence mode="wait">
+            {viewMode === '3d' ? (
+              <motion.div
+                key="globe"
+                className="absolute inset-0"
+                initial={{ opacity: 0, scale: 1.05 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.08 }}
+                transition={{ duration: 0.4, ease: 'easeInOut' }}
+              >
+                <Moon3DGlobe
+                  markers={displayedMarkers}
+                  selectedMarker={selectedMarker}
+                  onSelectMarker={handleSelectMarker}
+                  onAutoSwitch2D={handleAutoSwitch2D}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="map"
+                className="absolute inset-0"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.4, ease: 'easeInOut' }}
+              >
+                <Moon2DMap
+                  markers={displayedMarkers}
+                  selectedMarker={selectedMarker}
+                  onSelectMarker={handleSelectMarker}
+                />
+                {/* Time slider */}
+                <TimeSlider
+                  allMarkers={layerFilteredMarkers}
+                  onFilteredMarkersChange={handleTimeFilter}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {/* Info panel overlay */}
-          <InfoPanel
-            marker={selectedMarker}
-            onClose={() => setSelectedMarker(null)}
-          />
+          {/* Transition overlay — zoom flash effect */}
+          <AnimatePresence>
+            {transitionPhase === 'zoom-in' && (
+              <motion.div
+                key="t-zoom"
+                className="absolute inset-0 pointer-events-none z-50"
+                style={{ background: 'radial-gradient(circle at center, rgba(100,130,200,0.0) 0%, rgba(0,0,0,0) 100%)' }}
+                initial={{ opacity: 0, scale: 1 }}
+                animate={{ opacity: 1, scale: 1.6, background: 'radial-gradient(circle at center, rgba(150,170,220,0.25) 0%, rgba(0,0,20,0.6) 100%)' }}
+                transition={{ duration: 0.6, ease: 'easeIn' }}
+              />
+            )}
+            {transitionPhase === 'flash' && (
+              <motion.div
+                key="t-flash"
+                className="absolute inset-0 pointer-events-none z-50 bg-white"
+                initial={{ opacity: 0.9 }}
+                animate={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              />
+            )}
+            {transitionPhase === 'fade-out' && (
+              <motion.div
+                key="t-fadeout"
+                className="absolute inset-0 pointer-events-none z-50"
+                initial={{ opacity: 0.5, backdropFilter: 'blur(8px)' }}
+                animate={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+                transition={{ duration: 0.4 }}
+              />
+            )}
+          </AnimatePresence>
 
-          {/* Time slider — only on 2D map */}
-          {viewMode === '2d' && (
-            <TimeSlider
-              allMarkers={layerFilteredMarkers}
-              onFilteredMarkersChange={handleTimeFilter}
-            />
-          )}
+          {/* Info panel */}
+          <InfoPanel marker={selectedMarker} onClose={() => setSelectedMarker(null)} />
 
           {/* Stats bar */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-card/90 backdrop-blur-xl rounded-full border border-border shadow-xl z-[400]">
@@ -138,9 +213,7 @@ export default function MoonExplorer() {
             </span>
             <div className="w-px h-3 bg-border" />
             {sliderYear && viewMode === '2d' ? (
-              <span className="text-[11px] text-primary font-body font-medium">
-                Up to {sliderYear}
-              </span>
+              <span className="text-[11px] text-primary font-body font-medium">Up to {sliderYear}</span>
             ) : (
               <span className="text-[11px] text-muted-foreground font-body">
                 {activeLayers.length} layer{activeLayers.length !== 1 ? 's' : ''} active
