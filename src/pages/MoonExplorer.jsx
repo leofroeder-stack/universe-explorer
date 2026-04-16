@@ -5,7 +5,8 @@ import Moon3DGlobe from '../components/moon/Moon3DGlobe';
 import Moon2DMap from '../components/moon/Moon2DMap';
 import LayerControls from '../components/moon/LayerControls';
 import InfoPanel from '../components/moon/InfoPanel';
-import MarkerList from '../components/moon/MarkerList';
+import Sidebar from '../components/moon/Sidebar';
+import TimeSlider from '../components/moon/TimeSlider';
 import { missions, events, objects, LAYER_TYPES } from '../components/moon/moonData';
 
 export default function MoonExplorer() {
@@ -16,6 +17,8 @@ export default function MoonExplorer() {
     LAYER_TYPES.OBJECTS,
   ]);
   const [selectedMarker, setSelectedMarker] = useState(null);
+  const [timeFilteredMarkers, setTimeFilteredMarkers] = useState(null);
+  const [sliderYear, setSliderYear] = useState(null);
 
   const toggleLayer = useCallback((layer) => {
     setActiveLayers(prev =>
@@ -23,7 +26,7 @@ export default function MoonExplorer() {
     );
   }, []);
 
-  const filteredMarkers = useMemo(() => {
+  const layerFilteredMarkers = useMemo(() => {
     const all = [];
     if (activeLayers.includes(LAYER_TYPES.MISSIONS)) all.push(...missions);
     if (activeLayers.includes(LAYER_TYPES.EVENTS)) all.push(...events);
@@ -31,8 +34,20 @@ export default function MoonExplorer() {
     return all;
   }, [activeLayers]);
 
+  // When time filter is active (2D map), intersect with layer filter
+  const displayedMarkers = useMemo(() => {
+    if (timeFilteredMarkers === null) return layerFilteredMarkers;
+    const ids = new Set(timeFilteredMarkers.map(m => m.id));
+    return layerFilteredMarkers.filter(m => ids.has(m.id));
+  }, [layerFilteredMarkers, timeFilteredMarkers]);
+
   const handleSelectMarker = useCallback((marker) => {
     setSelectedMarker(prev => prev?.id === marker.id ? null : marker);
+  }, []);
+
+  const handleTimeFilter = useCallback((filtered, year) => {
+    setTimeFilteredMarkers(filtered);
+    setSliderYear(year);
   }, []);
 
   return (
@@ -54,7 +69,7 @@ export default function MoonExplorer() {
             <div className="hidden md:block">
               <LayerControls activeLayers={activeLayers} onToggleLayer={toggleLayer} />
             </div>
-            <Tabs value={viewMode} onValueChange={setViewMode}>
+            <Tabs value={viewMode} onValueChange={(v) => { setViewMode(v); if (v === '3d') setTimeFilteredMarkers(null); }}>
               <TabsList className="bg-secondary">
                 <TabsTrigger value="3d" className="gap-1.5 text-xs">
                   <Globe className="w-3.5 h-3.5" />
@@ -77,10 +92,10 @@ export default function MoonExplorer() {
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar - marker list */}
-        <aside className="hidden lg:block w-72 border-r border-border bg-card/30 flex-shrink-0">
-          <MarkerList
-            markers={filteredMarkers}
+        {/* Sidebar */}
+        <aside className="hidden lg:block w-72 border-r border-border bg-card/30 flex-shrink-0 overflow-hidden">
+          <Sidebar
+            markers={displayedMarkers}
             selectedMarker={selectedMarker}
             onSelectMarker={handleSelectMarker}
           />
@@ -90,13 +105,13 @@ export default function MoonExplorer() {
         <main className="flex-1 relative">
           {viewMode === '3d' ? (
             <Moon3DGlobe
-              markers={filteredMarkers}
+              markers={displayedMarkers}
               selectedMarker={selectedMarker}
               onSelectMarker={handleSelectMarker}
             />
           ) : (
             <Moon2DMap
-              markers={filteredMarkers}
+              markers={displayedMarkers}
               selectedMarker={selectedMarker}
               onSelectMarker={handleSelectMarker}
             />
@@ -108,15 +123,29 @@ export default function MoonExplorer() {
             onClose={() => setSelectedMarker(null)}
           />
 
+          {/* Time slider — only on 2D map */}
+          {viewMode === '2d' && (
+            <TimeSlider
+              allMarkers={layerFilteredMarkers}
+              onFilteredMarkersChange={handleTimeFilter}
+            />
+          )}
+
           {/* Stats bar */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-card/90 backdrop-blur-xl rounded-full border border-border shadow-xl">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-card/90 backdrop-blur-xl rounded-full border border-border shadow-xl z-[400]">
             <span className="text-[11px] text-muted-foreground font-body">
-              Showing <span className="text-foreground font-medium">{filteredMarkers.length}</span> locations
+              Showing <span className="text-foreground font-medium">{displayedMarkers.length}</span> locations
             </span>
             <div className="w-px h-3 bg-border" />
-            <span className="text-[11px] text-muted-foreground font-body">
-              {activeLayers.length} layer{activeLayers.length !== 1 ? 's' : ''} active
-            </span>
+            {sliderYear && viewMode === '2d' ? (
+              <span className="text-[11px] text-primary font-body font-medium">
+                Up to {sliderYear}
+              </span>
+            ) : (
+              <span className="text-[11px] text-muted-foreground font-body">
+                {activeLayers.length} layer{activeLayers.length !== 1 ? 's' : ''} active
+              </span>
+            )}
           </div>
         </main>
       </div>
