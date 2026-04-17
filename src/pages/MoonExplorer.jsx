@@ -16,9 +16,11 @@ import MoonCycleCalendar from '../components/moon/MoonCycleCalendar.jsx';
 import { missions, events, objects, LAYER_TYPES } from '../components/moon/moonData';
 import { marsMissions, marsEvents, marsObjects } from '../components/moon/marsData';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useFeatureFlag } from '@/components/FeatureFlagProvider';
 
 export default function MoonExplorer() {
   const navigate = useNavigate();
+  const { isEnabled } = useFeatureFlag();
   const [planet, setPlanet] = useState('moon'); // 'moon' | 'mars'
   const [viewMode, setViewMode] = useState('3d');
   const [arOpen, setArOpen] = useState(false);
@@ -182,7 +184,7 @@ export default function MoonExplorer() {
             </div>
 
             {/* Moon Cycle button — moon only */}
-            {planet === 'moon' && (
+            {planet === 'moon' && isEnabled('moon_cycle') && (
               <button
                 onClick={() => setMoonCycleOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
@@ -194,21 +196,23 @@ export default function MoonExplorer() {
             )}
 
             {/* Measure button */}
-            <button
-              onClick={() => { setMeasureActive(a => !a); handleMeasureClear(); }}
-              title="Measurement Tool"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border transition-all ${
-                measureActive
-                  ? 'bg-amber-500/20 border-amber-400/60 text-amber-400'
-                  : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
-              }`}
-            >
-              <Ruler className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Measure</span>
-            </button>
+            {isEnabled('measurements') && (
+              <button
+                onClick={() => { setMeasureActive(a => !a); handleMeasureClear(); }}
+                title="Measurement Tool"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border transition-all ${
+                  measureActive
+                    ? 'bg-amber-500/20 border-amber-400/60 text-amber-400'
+                    : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
+                }`}
+              >
+                <Ruler className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Measure</span>
+              </button>
+            )}
 
             {/* AR View button — moon only */}
-            {planet === 'moon' && (
+            {planet === 'moon' && isEnabled('ar_view') && (
               <button
                 onClick={() => setArOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border border-primary/40 text-primary hover:bg-primary/10 transition-all"
@@ -339,7 +343,7 @@ export default function MoonExplorer() {
           <InfoPanel marker={selectedMarker} onClose={() => setSelectedMarker(null)} />
 
           {/* Measurement result card */}
-          {measureActive && (
+          {measureActive && isEnabled('measurements') && (
             <div className="absolute top-4 right-4 z-[600]">
               <MeasurementTool
                 isActive={measureActive}
@@ -352,22 +356,26 @@ export default function MoonExplorer() {
           )}
 
           {/* AR View */}
-          <AnimatePresence>
-            {arOpen && (
-              <ARView
-                markers={displayedMarkers}
-                onClose={() => setArOpen(false)}
-                onSelectMarker={handleSelectMarker}
-              />
-            )}
-          </AnimatePresence>
+          {isEnabled('ar_view') && (
+            <AnimatePresence>
+              {arOpen && (
+                <ARView
+                  markers={displayedMarkers}
+                  onClose={() => setArOpen(false)}
+                  onSelectMarker={handleSelectMarker}
+                />
+              )}
+            </AnimatePresence>
+          )}
 
           {/* Moon Cycle Calendar */}
-          <MoonCycleCalendar
-            isOpen={moonCycleOpen}
-            onClose={() => setMoonCycleOpen(false)}
-            onJumpToDate={handleJumpToDate}
-          />
+          {isEnabled('moon_cycle') && (
+            <MoonCycleCalendar
+              isOpen={moonCycleOpen}
+              onClose={() => setMoonCycleOpen(false)}
+              onJumpToDate={handleJumpToDate}
+            />
+          )}
 
           {/* Stats bar */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-card/90 backdrop-blur-xl rounded-full border border-border shadow-xl z-[400]">

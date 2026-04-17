@@ -5,9 +5,11 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import { FeatureFlagProvider } from '@/components/FeatureFlagProvider';
 import MoonExplorer from './pages/MoonExplorer';
 import SolarSystem from './pages/SolarSystem';
 import PlanetExplorer from './pages/PlanetExplorer';
+import AdminDashboard from './pages/AdminDashboard';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -39,6 +41,7 @@ const AuthenticatedApp = () => {
       <Route path="/" element={<MoonExplorer />} />
       <Route path="/solar-system" element={<SolarSystem />} />
       <Route path="/planet/:planetName" element={<PlanetExplorer />} />
+      <Route path="/admin" element={<AdminDashboard />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
@@ -50,9 +53,11 @@ function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <AuthenticatedApp />
-        </Router>
+        <FeatureFlagProvider>
+          <Router>
+            <AuthenticatedApp />
+          </Router>
+        </FeatureFlagProvider>
         <Toaster />
       </QueryClientProvider>
     </AuthProvider>
