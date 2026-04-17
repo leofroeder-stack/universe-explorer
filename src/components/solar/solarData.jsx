@@ -573,7 +573,7 @@ export const PLANET_INFO = {
   earth: {
     name: 'Earth',
     color: '#2E86AB',
-    textureUrl: 'https://space.jpl.nasa.gov/tmaps/pix/ear0xuu2.jpg',
+    textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg',
     glowColor: 'vec4(0.2, 0.5, 1.0, 1.0)',
     roughness: 0.65,
     bumpScale: 0.012,
