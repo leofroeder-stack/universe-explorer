@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, X, ExternalLink } from 'lucide-react';
+import { PLANET_BODIES } from '../components/solar/solarData';
 
 const PLANETS = [
   {
@@ -452,20 +453,23 @@ export default function SolarSystem() {
 
         {/* Planet list chips */}
         <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex gap-2 flex-wrap justify-center px-4">
-          {PLANETS.map(p => (
-            <button
-              key={p.name}
-              onClick={() => setSelectedPlanet(selectedPlanet?.name === p.name ? null : p)}
-              className="px-2.5 py-1 rounded-full text-[10px] font-body font-medium border transition-all"
-              style={{
-                borderColor: selectedPlanet?.name === p.name ? p.color3 : 'rgba(255,255,255,0.15)',
-                color: selectedPlanet?.name === p.name ? p.color3 : 'rgba(255,255,255,0.55)',
-                background: selectedPlanet?.name === p.name ? `${p.color3}18` : 'rgba(10,15,30,0.6)',
-              }}
-            >
-              {p.name}
-            </button>
-          ))}
+          {PLANETS.map(p => {
+            const bodyCount = p.name !== 'Sun' ? (PLANET_BODIES[p.name.toLowerCase()]?.length || 0) : 0;
+            return (
+              <button
+                key={p.name}
+                onClick={() => setSelectedPlanet(selectedPlanet?.name === p.name ? null : p)}
+                className="px-2.5 py-1 rounded-full text-[10px] font-body font-medium border transition-all"
+                style={{
+                  borderColor: selectedPlanet?.name === p.name ? p.color3 : 'rgba(255,255,255,0.15)',
+                  color: selectedPlanet?.name === p.name ? p.color3 : 'rgba(255,255,255,0.55)',
+                  background: selectedPlanet?.name === p.name ? `${p.color3}18` : 'rgba(10,15,30,0.6)',
+                }}
+              >
+                {p.name}{bodyCount > 0 ? ` (${bodyCount})` : ''}
+              </button>
+            );
+          })}
         </div>
 
         {/* Info panel */}
@@ -492,6 +496,20 @@ export default function SolarSystem() {
                 </div>
               ))}
             </div>
+            {selectedPlanet.name !== 'Sun' && PLANET_BODIES[selectedPlanet.name.toLowerCase()] && (
+              <button
+                onClick={() => navigate(`/planet/${selectedPlanet.name.toLowerCase()}`)}
+                className="w-full mt-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-body font-semibold transition-all border"
+                style={{
+                  borderColor: `${selectedPlanet.color3}60`,
+                  color: selectedPlanet.color3,
+                  background: `${selectedPlanet.color3}15`,
+                }}
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Explore {selectedPlanet.name} ({PLANET_BODIES[selectedPlanet.name.toLowerCase()].length} bodies)
+              </button>
+            )}
           </div>
         )}
       </div>

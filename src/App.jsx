@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import MoonExplorer from './pages/MoonExplorer';
 import SolarSystem from './pages/SolarSystem';
+import PlanetExplorer from './pages/PlanetExplorer';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -37,6 +38,7 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route path="/" element={<MoonExplorer />} />
       <Route path="/solar-system" element={<SolarSystem />} />
+      <Route path="/planet/:planetName" element={<PlanetExplorer />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
