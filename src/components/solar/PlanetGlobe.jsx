@@ -2,6 +2,18 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { BODY_COLORS } from './solarData';
+import { base44 } from '@/api/base44Client';
+
+// Cache fetched textures (dataUrl) by URL to avoid re-downloading
+const textureCache = {};
+
+async function fetchTextureDataUrl(url) {
+  if (textureCache[url]) return textureCache[url];
+  const res = await base44.functions.invoke('proxyTexture', { url });
+  const dataUrl = res.data?.dataUrl;
+  if (dataUrl) textureCache[url] = dataUrl;
+  return dataUrl;
+}
 
 const DEFAULT_Z = 3.2;
 const MIN_ZOOM = 1.6;
@@ -114,17 +126,19 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
     });
     scene.add(new THREE.Mesh(glowGeo, glowMat));
 
-    const loader = new THREE.TextureLoader();
-    loader.load(planet.textureUrl, (tex) => {
-      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      mat.map = tex;
-      mat.bumpMap = tex;
-      mat.bumpScale = planet.bumpScale ?? 0.012;
-      mat.roughness = roughness;
-      mat.needsUpdate = true;
-    }, undefined, () => {
-      // Texture failed — solid color fallback already showing, nothing to do
-    });
+    // Fetch texture via backend proxy to avoid CORS/hotlink issues
+    fetchTextureDataUrl(planet.textureUrl).then((dataUrl) => {
+      if (!dataUrl) return;
+      const loader = new THREE.TextureLoader();
+      loader.load(dataUrl, (tex) => {
+        tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        mat.map = tex;
+        mat.bumpMap = tex;
+        mat.bumpScale = planet.bumpScale ?? 0.012;
+        mat.roughness = roughness;
+        mat.needsUpdate = true;
+      });
+    }).catch(() => { /* solid color fallback already visible */ });
 
     sceneRef.current = { scene, camera, renderer, globe, markerMeshes: [], rotVel: { x: 0, y: 0.002 } };
 

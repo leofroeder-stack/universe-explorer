@@ -3,6 +3,16 @@ import * as THREE from 'three';
 import { LAYER_COLORS } from './moonData';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import MoonPhaseOverlay from './MoonPhaseOverlay';
+import { base44 } from '@/api/base44Client';
+
+const textureCache = {};
+async function fetchTextureDataUrl(url) {
+  if (textureCache[url]) return textureCache[url];
+  const res = await base44.functions.invoke('proxyTexture', { url });
+  const dataUrl = res.data?.dataUrl;
+  if (dataUrl) textureCache[url] = dataUrl;
+  return dataUrl;
+}
 
 const DEFAULT_CAMERA_Z = 3.2;
 const MIN_ZOOM = 1.5;
@@ -11,8 +21,8 @@ const AUTO_SWITCH_THRESHOLD = 1.7;
 const IDLE_RESTART_MS = 5000; // resume auto-rotation after 5s of no interaction
 
 const PLANET_TEXTURES = {
-  moon: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg',
-  mars: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/mars_1k_color.jpg',
+  moon: 'https://www.solarsystemscope.com/textures/download/2k_moon.jpg',
+  mars: 'https://www.solarsystemscope.com/textures/download/2k_mars.jpg',
 };
 
 const PLANET_GLOW = {
@@ -164,24 +174,25 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
 
     const geometry = new THREE.SphereGeometry(1, 128, 128);
     const textureLoader = new THREE.TextureLoader();
-    textureLoader.crossOrigin = 'anonymous';
-
     const textureUrl = PLANET_TEXTURES[planet] || PLANET_TEXTURES.moon;
-    const moonTexture = textureLoader.load(
-      textureUrl,
-      () => setIsLoading(false),
-      undefined,
-      () => setIsLoading(false)
-    );
-    const bumpMap = textureLoader.load(textureUrl);
 
     const material = new THREE.MeshStandardMaterial({
-      map: moonTexture,
-      bumpMap: bumpMap,
-      bumpScale: 0.012,
       roughness: 0.95,
       metalness: 0.0,
     });
+
+    // Fetch texture via backend proxy to avoid CORS/hotlink issues
+    fetchTextureDataUrl(textureUrl).then((dataUrl) => {
+      if (!dataUrl) { setIsLoading(false); return; }
+      textureLoader.load(dataUrl, (tex) => {
+        tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        material.map = tex;
+        material.bumpMap = tex;
+        material.bumpScale = 0.012;
+        material.needsUpdate = true;
+        setIsLoading(false);
+      });
+    }).catch(() => setIsLoading(false));
 
     const moon = new THREE.Mesh(geometry, material);
     moon.receiveShadow = true;
