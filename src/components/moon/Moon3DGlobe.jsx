@@ -1,8 +1,11 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { LAYER_COLORS } from './moonData';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Telescope } from 'lucide-react';
 import MoonPhaseOverlay from './MoonPhaseOverlay';
+import GlobeCompass from './GlobeCompass';
+import SunAngleDisplay from './SunAngleDisplay';
+import GuidedTour from './GuidedTour';
 import { base44 } from '@/api/base44Client';
 
 const textureCache = {};
@@ -35,9 +38,15 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
   const sceneRef = useRef({});
   const [isLoading, setIsLoading] = useState(true);
   const animatingToMarkerRef = useRef(false);
-  // idle timer ref — shared with the animation loop closure
   const idleTimerRef = useRef(null);
-  const autoRotatingRef = useRef(true); // starts auto-rotating
+  const autoRotatingRef = useRef(true);
+
+  // Refs exposed to overlay components
+  const globeRotYRef = useRef(0);   // live Y rotation of globe (for compass)
+  const sunLightRef = useRef(null); // live ref to Three.js directional light (for sun angle)
+
+  // Guided tour
+  const [tourActive, setTourActive] = useState(false);
 
   // ─── Stop auto-rotation, restart after IDLE_RESTART_MS ─────────────────────
   const pauseAndScheduleRestart = useCallback(() => {
@@ -168,6 +177,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     sunLight.position.set(8, 2, 6);
     sunLight.castShadow = true;
     scene.add(sunLight);
+    sunLightRef.current = sunLight; // expose for SunAngleDisplay
     const fillLight = new THREE.DirectionalLight(0x334488, 0.4);
     fillLight.position.set(-8, -2, -6);
     scene.add(fillLight);
@@ -418,6 +428,8 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       if (camera.position.z > AUTO_SWITCH_THRESHOLD + 0.2) autoSwitchTriggered = false;
 
       stars.rotation.y += 0.00005;
+      // Keep compass ref in sync
+      globeRotYRef.current = moon.rotation.y;
       renderer.render(scene, camera);
     };
     animate();
@@ -453,6 +465,12 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       animateCameraZ(2.1, 700);
     });
   }, [selectedMarker]);
+
+  // ─── Guided tour: focus on a marker ────────────────────────────────────────
+  const handleTourFocus = useCallback((marker) => {
+    rotateMoonToMarker(marker, () => animateCameraZ(2.2, 700));
+    if (onSelectMarker) onSelectMarker(marker);
+  }, [rotateMoonToMarker, animateCameraZ, onSelectMarker]);
 
   // ─── Update markers ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -551,7 +569,33 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
             <MoonPhaseOverlay />
           </div>
         )}
+        {/* Guided Tour button */}
+        {markers.length > 0 && (
+          <button
+            onClick={() => setTourActive(t => !t)}
+            className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-colors shadow-lg ${
+              tourActive
+                ? 'bg-primary/30 border-primary text-primary'
+                : 'bg-card/90 backdrop-blur-xl border-border hover:bg-secondary'
+            }`}
+            title="Guided Tour"
+          >
+            <Telescope className="w-4 h-4" />
+          </button>
+        )}
       </div>
+
+      {/* Sun angle + compass overlays */}
+      <SunAngleDisplay sunLightRef={sunLightRef} />
+      <GlobeCompass globeRotationRef={globeRotYRef} />
+
+      {/* Guided tour */}
+      <GuidedTour
+        markers={markers}
+        isActive={tourActive}
+        onFocusMarker={handleTourFocus}
+        onClose={() => setTourActive(false)}
+      />
 
       <div className="absolute bottom-14 left-4 text-[10px] text-muted-foreground/60 font-body">
         Drag to rotate • Pinch/scroll to zoom • Tap markers
