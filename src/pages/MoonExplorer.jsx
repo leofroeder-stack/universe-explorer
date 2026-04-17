@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { Globe, Map, Scan } from 'lucide-react';
+import { Globe, Map, Scan, Moon, Ruler } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Moon3DGlobe from '../components/moon/Moon3DGlobe';
@@ -11,6 +11,8 @@ import TimeSlider from '../components/moon/TimeSlider';
 import MobileMenuDrawer from '../components/moon/MobileMenuDrawer';
 import MoonPhaseOverlay from '../components/moon/MoonPhaseOverlay';
 import ARView from '../components/moon/ARView';
+import MeasurementTool from '../components/moon/MeasurementTool';
+import MoonCycleCalendar from '../components/moon/MoonCycleCalendar';
 import { missions, events, objects, LAYER_TYPES } from '../components/moon/moonData';
 import { marsMissions, marsEvents, marsObjects } from '../components/moon/marsData';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,6 +22,10 @@ export default function MoonExplorer() {
   const [planet, setPlanet] = useState('moon'); // 'moon' | 'mars'
   const [viewMode, setViewMode] = useState('3d');
   const [arOpen, setArOpen] = useState(false);
+  const [moonCycleOpen, setMoonCycleOpen] = useState(false);
+  const [measureActive, setMeasureActive] = useState(false);
+  const [measurePointA, setMeasurePointA] = useState(null);
+  const [measurePointB, setMeasurePointB] = useState(null);
   const [activeLayers, setActiveLayers] = useState([
     LAYER_TYPES.MISSIONS, LAYER_TYPES.EVENTS, LAYER_TYPES.OBJECTS,
   ]);
@@ -91,6 +97,33 @@ export default function MoonExplorer() {
     triggerViewTransition('2d');
   }, [triggerViewTransition]);
 
+  // Measurement handlers
+  const handleMeasurePoint = useCallback((point) => {
+    setMeasurePointA(prev => {
+      if (!prev) return point;
+      setMeasurePointB(point);
+      return prev;
+    });
+  }, []);
+
+  const handleMeasureClear = useCallback(() => {
+    setMeasurePointA(null);
+    setMeasurePointB(null);
+  }, []);
+
+  // Moon cycle: jump timeline to date (set time filter to that year)
+  const handleJumpToDate = useCallback((date) => {
+    const year = date.getFullYear();
+    // Filter markers to those at/before the chosen year
+    const filtered = layerFilteredMarkers.filter(m => {
+      const match = m.date?.match(/\d{4}/);
+      return match ? parseInt(match[0]) <= year : true;
+    });
+    setTimeFilteredMarkers(filtered);
+    setSliderYear(year);
+    triggerViewTransition('2d');
+  }, [layerFilteredMarkers, triggerViewTransition]);
+
   const handleTabChange = (v) => {
     if (v !== viewMode) triggerViewTransition(v);
   };
@@ -147,6 +180,32 @@ export default function MoonExplorer() {
                 </button>
               ))}
             </div>
+
+            {/* Moon Cycle button — moon only */}
+            {planet === 'moon' && (
+              <button
+                onClick={() => setMoonCycleOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
+                title="Moon Cycle Calendar"
+              >
+                <Moon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Moon Cycle</span>
+              </button>
+            )}
+
+            {/* Measure button */}
+            <button
+              onClick={() => { setMeasureActive(a => !a); handleMeasureClear(); }}
+              title="Measurement Tool"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border transition-all ${
+                measureActive
+                  ? 'bg-amber-500/20 border-amber-400/60 text-amber-400'
+                  : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
+              }`}
+            >
+              <Ruler className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Measure</span>
+            </button>
 
             {/* AR View button — moon only */}
             {planet === 'moon' && (
@@ -210,7 +269,7 @@ export default function MoonExplorer() {
                   key={planet}
                   markers={displayedMarkers}
                   selectedMarker={selectedMarker}
-                  onSelectMarker={handleSelectMarker}
+                  onSelectMarker={measureActive ? handleMeasurePoint : handleSelectMarker}
                   onAutoSwitch2D={handleAutoSwitch2D}
                   planet={planet}
                 />
@@ -230,6 +289,10 @@ export default function MoonExplorer() {
                   onSelectMarker={handleSelectMarker}
                   onSwitchTo3D={() => triggerViewTransition('3d')}
                   planet={planet}
+                  measureActive={measureActive}
+                  measurePointA={measurePointA}
+                  measurePointB={measurePointB}
+                  onMeasurePoint={handleMeasurePoint}
                 />
                 {/* Time slider */}
                 <TimeSlider
@@ -275,6 +338,19 @@ export default function MoonExplorer() {
           {/* Info panel */}
           <InfoPanel marker={selectedMarker} onClose={() => setSelectedMarker(null)} />
 
+          {/* Measurement result card */}
+          {measureActive && (
+            <div className="absolute top-4 right-4 z-[600]">
+              <MeasurementTool
+                isActive={measureActive}
+                onToggle={() => { setMeasureActive(false); handleMeasureClear(); }}
+                pointA={measurePointA}
+                pointB={measurePointB}
+                onClear={handleMeasureClear}
+              />
+            </div>
+          )}
+
           {/* AR View */}
           <AnimatePresence>
             {arOpen && (
@@ -285,6 +361,13 @@ export default function MoonExplorer() {
               />
             )}
           </AnimatePresence>
+
+          {/* Moon Cycle Calendar */}
+          <MoonCycleCalendar
+            isOpen={moonCycleOpen}
+            onClose={() => setMoonCycleOpen(false)}
+            onJumpToDate={handleJumpToDate}
+          />
 
           {/* Stats bar */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-card/90 backdrop-blur-xl rounded-full border border-border shadow-xl z-[400]">

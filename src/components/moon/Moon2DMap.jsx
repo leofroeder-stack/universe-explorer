@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useCallback, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { LAYER_COLORS } from './moonData';
@@ -85,7 +85,26 @@ const TILE_URLS = {
   mars: 'https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-mars-basemap-v0-1/all/{z}/{x}/{y}.png',
 };
 
-export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onSwitchTo3D, planet = 'moon' }) {
+// Handles map clicks for measurement mode
+function MeasurementClickHandler({ measureActive, markers, onMeasurePoint }) {
+  useMapEvents({
+    click: (e) => {
+      if (!measureActive) return;
+      // Snap to nearest marker within ~5deg, else use raw lat/lng
+      const { lat, lng } = e.latlng;
+      let snapped = { name: `${lat.toFixed(2)}°, ${lng.toFixed(2)}°`, lat, lng };
+      let minDist = Infinity;
+      markers.forEach(m => {
+        const d = Math.hypot(m.lat - lat, m.lng - lng);
+        if (d < minDist && d < 5) { minDist = d; snapped = m; }
+      });
+      onMeasurePoint(snapped);
+    },
+  });
+  return null;
+}
+
+export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onSwitchTo3D, planet = 'moon', measureActive, measurePointA, measurePointB, onMeasurePoint }) {
   const moonTileUrl = TILE_URLS[planet] || TILE_URLS.moon;
 
   const markerElements = useMemo(() => {
@@ -94,13 +113,28 @@ export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onS
         key={marker.id}
         position={[marker.lat, marker.lng]}
         icon={createIcon(marker.type, selectedMarker?.id === marker.id)}
-        eventHandlers={{ click: () => onSelectMarker(marker) }}
+        eventHandlers={{ click: () => { if (measureActive) onMeasurePoint?.(marker); else onSelectMarker(marker); } }}
       />
     ));
-  }, [markers, selectedMarker, onSelectMarker]);
+  }, [markers, selectedMarker, onSelectMarker, measureActive, onMeasurePoint]);
+
+  // Geodesic line between the two points
+  const measureLine = useMemo(() => {
+    if (!measurePointA || !measurePointB) return null;
+    return (
+      <>
+        <Polyline
+          positions={[[measurePointA.lat, measurePointA.lng], [measurePointB.lat, measurePointB.lng]]}
+          pathOptions={{ color: '#fbbf24', weight: 2, dashArray: '6 4', opacity: 0.85 }}
+        />
+        <CircleMarker center={[measurePointA.lat, measurePointA.lng]} radius={7} pathOptions={{ color: '#60a5fa', fillColor: '#60a5fa', fillOpacity: 1 }} />
+        <CircleMarker center={[measurePointB.lat, measurePointB.lng]} radius={7} pathOptions={{ color: '#34d399', fillColor: '#34d399', fillOpacity: 1 }} />
+      </>
+    );
+  }, [measurePointA, measurePointB]);
 
   return (
-    <div className="w-full h-full relative">
+    <div className={`w-full h-full relative ${measureActive ? 'cursor-crosshair' : ''}`}>
       <MapContainer
         center={[0, 0]}
         zoom={2}
@@ -116,6 +150,8 @@ export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onS
         <ZoomControls />
         {onSwitchTo3D && <ZoomOutWatcher onSwitchTo3D={onSwitchTo3D} />}
         {markerElements}
+        {measureLine}
+        {measureActive && <MeasurementClickHandler measureActive={measureActive} markers={markers} onMeasurePoint={onMeasurePoint} />}
       </MapContainer>
     </div>
   );
