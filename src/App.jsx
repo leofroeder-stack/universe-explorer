@@ -6,6 +6,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import MoonExplorer from './pages/MoonExplorer';
+import SolarSystem from './pages/SolarSystem';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -35,6 +36,7 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route path="/" element={<MoonExplorer />} />
+      <Route path="/solar-system" element={<SolarSystem />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

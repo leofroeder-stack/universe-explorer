@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Globe, Map } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Moon3DGlobe from '../components/moon/Moon3DGlobe';
 import Moon2DMap from '../components/moon/Moon2DMap';
@@ -14,6 +15,7 @@ import { marsMissions, marsEvents, marsObjects } from '../components/moon/marsDa
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function MoonExplorer() {
+  const navigate = useNavigate();
   const [planet, setPlanet] = useState('moon'); // 'moon' | 'mars'
   const [viewMode, setViewMode] = useState('3d');
   const [activeLayers, setActiveLayers] = useState([
@@ -144,6 +146,12 @@ export default function MoonExplorer() {
               ))}
             </div>
 
+            <button
+              onClick={() => navigate('/solar-system')}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
+            >
+              ☀️ <span>Solar System</span>
+            </button>
             <div className="hidden md:block">
               <LayerControls activeLayers={activeLayers} onToggleLayer={toggleLayer} />
             </div>
