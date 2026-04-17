@@ -71,10 +71,13 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0x221e3b, 1.0));
-    const sun = new THREE.DirectionalLight(0xfff4e0, 4.5);
+    scene.add(new THREE.AmbientLight(0x334466, 1.2));
+    const sun = new THREE.DirectionalLight(0xfff4e0, 5.5);
     sun.position.set(8, 2, 6);
     scene.add(sun);
+    const fill = new THREE.DirectionalLight(0x224488, 0.8);
+    fill.position.set(-8, -2, -6);
+    scene.add(fill);
 
     // Stars
     const sp = [];
@@ -87,15 +90,34 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
 
     // Planet globe
     const geo = new THREE.SphereGeometry(1, 128, 128);
-    const mat = new THREE.MeshStandardMaterial({ color: parseInt(planet.color.replace('#', '0x')), roughness: 0.9 });
+    const roughness = planet.roughness ?? 0.85;
+    const mat = new THREE.MeshStandardMaterial({
+      color: parseInt(planet.color.replace('#', ''), 16),
+      roughness,
+      metalness: 0.0,
+    });
     const globe = new THREE.Mesh(geo, mat);
     scene.add(globe);
 
+    // Atmospheric glow
+    const glowColor = planet.glowColor || 'vec4(0.3, 0.4, 0.8, 1.0)';
+    const glowGeo = new THREE.SphereGeometry(1.035, 64, 64);
+    const glowMat = new THREE.ShaderMaterial({
+      vertexShader: `varying vec3 vNormal; void main() { vNormal = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `varying vec3 vNormal; void main() { float intensity = pow(0.55 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 4.0); gl_FragColor = ${glowColor} * intensity * 0.3; }`,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+    });
+    scene.add(new THREE.Mesh(glowGeo, glowMat));
+
     const loader = new THREE.TextureLoader();
     loader.load(planet.textureUrl, (tex) => {
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       mat.map = tex;
       mat.bumpMap = tex;
-      mat.bumpScale = 0.01;
+      mat.bumpScale = planet.bumpScale ?? 0.012;
+      mat.roughness = roughness;
       mat.needsUpdate = true;
       setIsLoading(false);
     }, undefined, () => setIsLoading(false));
