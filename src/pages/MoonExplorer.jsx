@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { Globe, Map } from 'lucide-react';
+import { Globe, Map, Scan } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Moon3DGlobe from '../components/moon/Moon3DGlobe';
@@ -10,6 +10,7 @@ import Sidebar from '../components/moon/Sidebar';
 import TimeSlider from '../components/moon/TimeSlider';
 import MobileMenuDrawer from '../components/moon/MobileMenuDrawer';
 import MoonPhaseOverlay from '../components/moon/MoonPhaseOverlay';
+import ARView from '../components/moon/ARView';
 import { missions, events, objects, LAYER_TYPES } from '../components/moon/moonData';
 import { marsMissions, marsEvents, marsObjects } from '../components/moon/marsData';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -18,6 +19,7 @@ export default function MoonExplorer() {
   const navigate = useNavigate();
   const [planet, setPlanet] = useState('moon'); // 'moon' | 'mars'
   const [viewMode, setViewMode] = useState('3d');
+  const [arOpen, setArOpen] = useState(false);
   const [activeLayers, setActiveLayers] = useState([
     LAYER_TYPES.MISSIONS, LAYER_TYPES.EVENTS, LAYER_TYPES.OBJECTS,
   ]);
@@ -146,6 +148,18 @@ export default function MoonExplorer() {
               ))}
             </div>
 
+            {/* AR View button — moon only */}
+            {planet === 'moon' && (
+              <button
+                onClick={() => setArOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border border-primary/40 text-primary hover:bg-primary/10 transition-all"
+                title="AR View"
+              >
+                <Scan className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">AR View</span>
+              </button>
+            )}
+
             <button
               onClick={() => navigate('/solar-system')}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
@@ -260,6 +274,17 @@ export default function MoonExplorer() {
 
           {/* Info panel */}
           <InfoPanel marker={selectedMarker} onClose={() => setSelectedMarker(null)} />
+
+          {/* AR View */}
+          <AnimatePresence>
+            {arOpen && (
+              <ARView
+                markers={displayedMarkers}
+                onClose={() => setArOpen(false)}
+                onSelectMarker={handleSelectMarker}
+              />
+            )}
+          </AnimatePresence>
 
           {/* Stats bar */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-card/90 backdrop-blur-xl rounded-full border border-border shadow-xl z-[400]">
