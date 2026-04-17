@@ -12,7 +12,7 @@ const PLANETS = [
     speed: 0,
     color: 0xFDB813,
     emissive: 0xFDB813,
-    emissiveIntensity: 1.2,
+    emissiveIntensity: 2.5,
     textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg/1024px-The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg',
     description: 'The Sun is the star at the center of our Solar System. It is a nearly perfect ball of hot plasma, heated to incandescence by nuclear fusion reactions.',
     facts: ['Diameter: 1.39 million km', 'Surface temp: 5,500°C', 'Age: 4.6 billion years', 'Contains 99.8% of Solar System mass'],
@@ -161,11 +161,16 @@ export default function SolarSystem() {
     starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
     scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, transparent: true, opacity: 0.8 })));
 
-    // Sun light
-    const sunLight = new THREE.PointLight(0xFFF4E0, 3.5, 800);
+    // Sun light — much brighter so planets are clearly lit
+    const sunLight = new THREE.PointLight(0xFFF4E0, 8, 1200);
     sunLight.position.set(0, 0, 0);
     scene.add(sunLight);
-    scene.add(new THREE.AmbientLight(0x111122, 0.8));
+    // Secondary warm fill so the dark side of planets isn't pitch-black
+    const fillLight = new THREE.PointLight(0xffd580, 1.5, 1200);
+    fillLight.position.set(0, 0, 0);
+    scene.add(fillLight);
+    // Ambient so you can always see planet detail
+    scene.add(new THREE.AmbientLight(0x334466, 1.2));
 
     // Load textures + build meshes
     const loader = new THREE.TextureLoader();
@@ -188,8 +193,8 @@ export default function SolarSystem() {
         (tex) => {
           const mat = new THREE.MeshStandardMaterial({
             map: tex,
-            roughness: p.name === 'Sun' ? 1 : 0.9,
-            metalness: 0,
+            roughness: p.name === 'Sun' ? 1 : 0.65,
+            metalness: p.name === 'Sun' ? 0 : 0.05,
             emissive: p.emissive ? new THREE.Color(p.emissive) : new THREE.Color(0x000000),
             emissiveIntensity: p.emissiveIntensity || 0,
             emissiveMap: p.name === 'Sun' ? tex : null,
@@ -220,17 +225,29 @@ export default function SolarSystem() {
       scene.add(mesh);
       planetMeshes.push(mesh);
 
-      // Sun glow
+      // Sun glow — inner + outer layers for a realistic corona look
       if (p.name === 'Sun') {
-        const glowGeo = new THREE.SphereGeometry(p.radius * 1.15, 32, 32);
-        const glowMat = new THREE.ShaderMaterial({
-          vertexShader: `varying vec3 vNormal; void main(){ vNormal = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-          fragmentShader: `varying vec3 vNormal; void main(){ float i = pow(0.6 - dot(vNormal, vec3(0,0,1)), 3.0); gl_FragColor = vec4(1.0,0.7,0.1,1.0)*i*0.6; }`,
+        const vsGlow = `varying vec3 vNormal; void main(){ vNormal = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
+        // Inner bright halo
+        const innerGlowGeo = new THREE.SphereGeometry(p.radius * 1.18, 32, 32);
+        const innerGlowMat = new THREE.ShaderMaterial({
+          vertexShader: vsGlow,
+          fragmentShader: `varying vec3 vNormal; void main(){ float i = pow(0.55 - dot(vNormal, vec3(0,0,1)), 2.2); gl_FragColor = vec4(1.0,0.85,0.3,1.0)*i*2.0; }`,
           side: THREE.BackSide,
           blending: THREE.AdditiveBlending,
           transparent: true,
         });
-        scene.add(new THREE.Mesh(glowGeo, glowMat));
+        scene.add(new THREE.Mesh(innerGlowGeo, innerGlowMat));
+        // Outer soft corona
+        const outerGlowGeo = new THREE.SphereGeometry(p.radius * 1.7, 32, 32);
+        const outerGlowMat = new THREE.ShaderMaterial({
+          vertexShader: vsGlow,
+          fragmentShader: `varying vec3 vNormal; void main(){ float i = pow(0.5 - dot(vNormal, vec3(0,0,1)), 3.5); gl_FragColor = vec4(1.0,0.6,0.05,1.0)*i*0.9; }`,
+          side: THREE.BackSide,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+        });
+        scene.add(new THREE.Mesh(outerGlowGeo, outerGlowMat));
       }
 
       // Saturn rings
