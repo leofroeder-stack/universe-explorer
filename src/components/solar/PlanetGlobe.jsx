@@ -99,6 +99,9 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
     const globe = new THREE.Mesh(geo, mat);
     scene.add(globe);
 
+    // Globe is ready to render — show it immediately, texture loads async
+    setIsLoading(false);
+
     // Atmospheric glow
     const glowColor = planet.glowColor || 'vec4(0.3, 0.4, 0.8, 1.0)';
     const glowGeo = new THREE.SphereGeometry(1.035, 64, 64);
@@ -119,8 +122,9 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
       mat.bumpScale = planet.bumpScale ?? 0.012;
       mat.roughness = roughness;
       mat.needsUpdate = true;
-      setIsLoading(false);
-    }, undefined, () => setIsLoading(false));
+    }, undefined, () => {
+      // Texture failed — solid color fallback already showing, nothing to do
+    });
 
     sceneRef.current = { scene, camera, renderer, globe, markerMeshes: [], rotVel: { x: 0, y: 0.002 } };
 

@@ -551,6 +551,9 @@ export const PLANET_BODIES = {
   neptune: neptuneBodies,
 };
 
+// Solar System Scope textures — reliable CORS-friendly CDN
+const T = 'https://raw.githubusercontent.com/Stellastra/planet-textures/main';
+
 export const PLANET_INFO = {
   mercury: {
     name: 'Mercury',
@@ -564,7 +567,7 @@ export const PLANET_INFO = {
   venus: {
     name: 'Venus',
     color: '#C8A060',
-    textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Venus-real_color.jpg/1024px-Venus-real_color.jpg',
+    textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg',
     glowColor: 'vec4(0.9, 0.75, 0.3, 1.0)',
     roughness: 0.65,
     bumpScale: 0.004,
@@ -591,7 +594,7 @@ export const PLANET_INFO = {
   jupiter: {
     name: 'Jupiter',
     color: '#C88B3A',
-    textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Jupiter_and_its_shrunken_Great_Red_Spot.jpg/1024px-Jupiter_and_its_shrunken_Great_Red_Spot.jpg',
+    textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg',
     glowColor: 'vec4(0.8, 0.6, 0.3, 1.0)',
     roughness: 0.5,
     bumpScale: 0.002,
@@ -600,7 +603,7 @@ export const PLANET_INFO = {
   saturn: {
     name: 'Saturn',
     color: '#E4D191',
-    textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Saturn_during_Equinox.jpg/1024px-Saturn_during_Equinox.jpg',
+    textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg',
     glowColor: 'vec4(0.9, 0.85, 0.5, 1.0)',
     roughness: 0.5,
     bumpScale: 0.002,
@@ -609,7 +612,7 @@ export const PLANET_INFO = {
   uranus: {
     name: 'Uranus',
     color: '#5BCFCF',
-    textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Uranus2.jpg/1024px-Uranus2.jpg',
+    textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg',
     glowColor: 'vec4(0.35, 0.85, 0.85, 1.0)',
     roughness: 0.45,
     bumpScale: 0.001,
@@ -618,7 +621,7 @@ export const PLANET_INFO = {
   neptune: {
     name: 'Neptune',
     color: '#3A5FCC',
-    textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Neptune_Full.jpg/1024px-Neptune_Full.jpg',
+    textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg',
     glowColor: 'vec4(0.15, 0.35, 0.9, 1.0)',
     roughness: 0.45,
     bumpScale: 0.002,
