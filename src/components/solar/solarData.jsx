@@ -555,7 +555,7 @@ export const PLANET_INFO = {
   mercury: {
     name: 'Mercury',
     color: '#B5A090',
-    textureUrl: 'https://space.jpl.nasa.gov/tmaps/pix/mer0muu2.jpg',
+    textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg',
     glowColor: 'vec4(0.5, 0.45, 0.4, 1.0)',
     roughness: 0.95,
     bumpScale: 0.025,
@@ -564,7 +564,7 @@ export const PLANET_INFO = {
   venus: {
     name: 'Venus',
     color: '#C8A060',
-    textureUrl: 'https://space.jpl.nasa.gov/tmaps/pix/ven0mss2.jpg',
+    textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Venus-real_color.jpg/1024px-Venus-real_color.jpg',
     glowColor: 'vec4(0.9, 0.75, 0.3, 1.0)',
     roughness: 0.65,
     bumpScale: 0.004,
@@ -582,7 +582,7 @@ export const PLANET_INFO = {
   mars: {
     name: 'Mars',
     color: '#C1440E',
-    textureUrl: 'https://space.jpl.nasa.gov/tmaps/pix/mar0kuu2.jpg',
+    textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/mars_1k_color.jpg',
     glowColor: 'vec4(0.7, 0.3, 0.1, 1.0)',
     roughness: 0.9,
     bumpScale: 0.02,
@@ -591,7 +591,7 @@ export const PLANET_INFO = {
   jupiter: {
     name: 'Jupiter',
     color: '#C88B3A',
-    textureUrl: 'https://space.jpl.nasa.gov/tmaps/pix/jup0vss1.jpg',
+    textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Jupiter_and_its_shrunken_Great_Red_Spot.jpg/1024px-Jupiter_and_its_shrunken_Great_Red_Spot.jpg',
     glowColor: 'vec4(0.8, 0.6, 0.3, 1.0)',
     roughness: 0.5,
     bumpScale: 0.002,
@@ -600,7 +600,7 @@ export const PLANET_INFO = {
   saturn: {
     name: 'Saturn',
     color: '#E4D191',
-    textureUrl: 'https://space.jpl.nasa.gov/tmaps/pix/sat0fds1.jpg',
+    textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Saturn_during_Equinox.jpg/1024px-Saturn_during_Equinox.jpg',
     glowColor: 'vec4(0.9, 0.85, 0.5, 1.0)',
     roughness: 0.5,
     bumpScale: 0.002,
@@ -609,7 +609,7 @@ export const PLANET_INFO = {
   uranus: {
     name: 'Uranus',
     color: '#5BCFCF',
-    textureUrl: 'https://space.jpl.nasa.gov/tmaps/pix/ura0fss1.jpg',
+    textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Uranus2.jpg/1024px-Uranus2.jpg',
     glowColor: 'vec4(0.35, 0.85, 0.85, 1.0)',
     roughness: 0.45,
     bumpScale: 0.001,
@@ -618,7 +618,7 @@ export const PLANET_INFO = {
   neptune: {
     name: 'Neptune',
     color: '#3A5FCC',
-    textureUrl: 'https://space.jpl.nasa.gov/tmaps/pix/nep0fds1.jpg',
+    textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Neptune_Full.jpg/1024px-Neptune_Full.jpg',
     glowColor: 'vec4(0.15, 0.35, 0.9, 1.0)',
     roughness: 0.45,
     bumpScale: 0.002,
