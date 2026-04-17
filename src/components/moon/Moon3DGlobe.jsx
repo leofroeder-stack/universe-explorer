@@ -12,7 +12,7 @@ const IDLE_RESTART_MS = 5000; // resume auto-rotation after 5s of no interaction
 
 const PLANET_TEXTURES = {
   moon: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg',
-  mars: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/USGS-MarsMap-thnewcolor-Nasa-PIA00591.jpg/1280px-USGS-MarsMap-thnewcolor-Nasa-PIA00591.jpg',
+  mars: 'https://space.jpl.nasa.gov/tmaps/pix/mar0kuu2.jpg',
 };
 
 const PLANET_GLOW = {
