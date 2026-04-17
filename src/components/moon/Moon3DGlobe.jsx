@@ -467,28 +467,50 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       const x = Math.cos(latRad) * Math.cos(lngRad);
       const y = Math.sin(latRad);
       const z = Math.cos(latRad) * Math.sin(lngRad);
+      const normal = new THREE.Vector3(x, y, z);
 
       const color = LAYER_COLORS[marker.type];
       const isSelected = selectedMarker?.id === marker.id;
 
-      const dot = new THREE.Mesh(
-        new THREE.SphereGeometry(isSelected ? 0.032 : 0.018, 16, 16),
+      // Outer halo ring (always visible, soft glow)
+      const halo = new THREE.Mesh(
+        new THREE.RingGeometry(0.022, 0.034, 32),
+        new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: isSelected ? 0.9 : 0.45 })
+      );
+      halo.position.set(x * 1.005, y * 1.005, z * 1.005);
+      halo.lookAt(new THREE.Vector3(0, 0, 0));
+      halo.userData = marker;
+      moon.add(halo);
+      sceneRef.current.markerMeshes.push(halo);
+
+      // Inner bright core
+      const core = new THREE.Mesh(
+        new THREE.SphereGeometry(isSelected ? 0.018 : 0.011, 16, 16),
         new THREE.MeshBasicMaterial({ color })
       );
-      dot.position.set(x * 1.008, y * 1.008, z * 1.008);
-      dot.userData = marker;
-      moon.add(dot);
-      sceneRef.current.markerMeshes.push(dot);
+      core.position.set(x * 1.012, y * 1.012, z * 1.012);
+      core.userData = marker;
+      moon.add(core);
+      sceneRef.current.markerMeshes.push(core);
+
+      // Spike / stem pointing outward from surface
+      const stemGeo = new THREE.CylinderGeometry(0.003, 0.001, 0.045, 6);
+      const stem = new THREE.Mesh(stemGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8 }));
+      stem.position.set(x * 1.03, y * 1.03, z * 1.03);
+      stem.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
+      moon.add(stem);
+      sceneRef.current.markerMeshes.push(stem);
 
       if (isSelected) {
-        const ring = new THREE.Mesh(
-          new THREE.RingGeometry(0.036, 0.055, 32),
-          new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.75 })
+        // Large outer selection ring
+        const selRing = new THREE.Mesh(
+          new THREE.RingGeometry(0.042, 0.056, 48),
+          new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.6 })
         );
-        ring.position.set(x * 1.01, y * 1.01, z * 1.01);
-        ring.lookAt(new THREE.Vector3(0, 0, 0));
-        moon.add(ring);
-        sceneRef.current.markerMeshes.push(ring);
+        selRing.position.set(x * 1.003, y * 1.003, z * 1.003);
+        selRing.lookAt(new THREE.Vector3(0, 0, 0));
+        moon.add(selRing);
+        sceneRef.current.markerMeshes.push(selRing);
       }
     });
   }, [markers, selectedMarker]);

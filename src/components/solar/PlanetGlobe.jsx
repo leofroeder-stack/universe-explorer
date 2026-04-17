@@ -271,29 +271,50 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
       const x = Math.cos(latRad) * Math.cos(lngRad);
       const y = Math.sin(latRad);
       const z = Math.cos(latRad) * Math.sin(lngRad);
+      const normal = new THREE.Vector3(x, y, z);
 
       const color = parseInt(BODY_COLORS[body.type].replace('#', ''), 16);
       const isSelected = selectedBody?.id === body.id;
-      const size = isSelected ? 0.032 : 0.018;
 
-      const dot = new THREE.Mesh(
-        new THREE.SphereGeometry(size, 16, 16),
+      // Outer halo ring
+      const halo = new THREE.Mesh(
+        new THREE.RingGeometry(0.022, 0.034, 32),
+        new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: isSelected ? 0.9 : 0.45 })
+      );
+      halo.position.set(x * 1.005, y * 1.005, z * 1.005);
+      halo.lookAt(new THREE.Vector3(0, 0, 0));
+      halo.userData = body;
+      globe.add(halo);
+      sceneRef.current.markerMeshes.push(halo);
+
+      // Inner bright core
+      const core = new THREE.Mesh(
+        new THREE.SphereGeometry(isSelected ? 0.018 : 0.011, 16, 16),
         new THREE.MeshBasicMaterial({ color })
       );
-      dot.position.set(x * 1.01, y * 1.01, z * 1.01);
-      dot.userData = body;
-      globe.add(dot);
-      sceneRef.current.markerMeshes.push(dot);
+      core.position.set(x * 1.012, y * 1.012, z * 1.012);
+      core.userData = body;
+      globe.add(core);
+      sceneRef.current.markerMeshes.push(core);
+
+      // Spike / stem pointing outward from surface
+      const stemGeo = new THREE.CylinderGeometry(0.003, 0.001, 0.045, 6);
+      const stem = new THREE.Mesh(stemGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8 }));
+      stem.position.set(x * 1.03, y * 1.03, z * 1.03);
+      stem.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
+      globe.add(stem);
+      sceneRef.current.markerMeshes.push(stem);
 
       if (isSelected) {
-        const ring = new THREE.Mesh(
-          new THREE.RingGeometry(size * 1.5, size * 2.2, 32),
-          new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.7 })
+        // Large outer selection ring
+        const selRing = new THREE.Mesh(
+          new THREE.RingGeometry(0.042, 0.056, 48),
+          new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.6 })
         );
-        ring.position.set(x * 1.012, y * 1.012, z * 1.012);
-        ring.lookAt(new THREE.Vector3(0, 0, 0));
-        globe.add(ring);
-        sceneRef.current.markerMeshes.push(ring);
+        selRing.position.set(x * 1.003, y * 1.003, z * 1.003);
+        selRing.lookAt(new THREE.Vector3(0, 0, 0));
+        globe.add(selRing);
+        sceneRef.current.markerMeshes.push(selRing);
       }
     });
   }, [bodies, selectedBody]);
