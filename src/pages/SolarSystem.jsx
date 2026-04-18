@@ -11,9 +11,9 @@ const PLANETS = [
     distance: 0,
     speed: 0,
     color: 0xFDB813,
-    emissive: 0xFDB813,
-    emissiveIntensity: 2.5,
-    textureUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg/1024px-The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg',
+    emissive: 0xB35C00,
+    emissiveIntensity: 0.8,
+    textureUrl: 'https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0171.jpg',
     description: 'The Sun is the star at the center of our Solar System. It is a nearly perfect ball of hot plasma, heated to incandescence by nuclear fusion reactions.',
     facts: ['Diameter: 1.39 million km', 'Surface temp: 5,500°C', 'Age: 4.6 billion years', 'Contains 99.8% of Solar System mass'],
     color3: '#FDB813',
@@ -305,21 +305,31 @@ export default function SolarSystem() {
       // Sun glow — inner + outer layers for a realistic corona look
       if (p.name === 'Sun') {
         const vsGlow = `varying vec3 vNormal; void main(){ vNormal = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
-        // Inner bright halo
-        const innerGlowGeo = new THREE.SphereGeometry(p.radius * 1.18, 32, 32);
+        // Inner plasma rim — bright golden-amber like SDO 171Å limb brightening
+        const innerGlowGeo = new THREE.SphereGeometry(p.radius * 1.12, 32, 32);
         const innerGlowMat = new THREE.ShaderMaterial({
           vertexShader: vsGlow,
-          fragmentShader: `varying vec3 vNormal; void main(){ float i = pow(0.55 - dot(vNormal, vec3(0,0,1)), 2.2); gl_FragColor = vec4(1.0,0.85,0.3,1.0)*i*2.0; }`,
+          fragmentShader: `varying vec3 vNormal; void main(){ float rim = 1.0 - abs(dot(vNormal, vec3(0,0,1))); float i = pow(rim, 2.5); gl_FragColor = vec4(1.0, 0.72, 0.05, 1.0) * i * 3.5; }`,
           side: THREE.BackSide,
           blending: THREE.AdditiveBlending,
           transparent: true,
         });
         scene.add(new THREE.Mesh(innerGlowGeo, innerGlowMat));
-        // Outer soft corona
-        const outerGlowGeo = new THREE.SphereGeometry(p.radius * 1.7, 32, 32);
+        // Mid corona — warm orange fade
+        const midGlowGeo = new THREE.SphereGeometry(p.radius * 1.45, 32, 32);
+        const midGlowMat = new THREE.ShaderMaterial({
+          vertexShader: vsGlow,
+          fragmentShader: `varying vec3 vNormal; void main(){ float rim = 1.0 - abs(dot(vNormal, vec3(0,0,1))); float i = pow(rim, 4.0); gl_FragColor = vec4(1.0, 0.5, 0.02, 1.0) * i * 1.8; }`,
+          side: THREE.BackSide,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+        });
+        scene.add(new THREE.Mesh(midGlowGeo, midGlowMat));
+        // Outer diffuse corona — deep amber halo
+        const outerGlowGeo = new THREE.SphereGeometry(p.radius * 2.2, 32, 32);
         const outerGlowMat = new THREE.ShaderMaterial({
           vertexShader: vsGlow,
-          fragmentShader: `varying vec3 vNormal; void main(){ float i = pow(0.5 - dot(vNormal, vec3(0,0,1)), 3.5); gl_FragColor = vec4(1.0,0.6,0.05,1.0)*i*0.9; }`,
+          fragmentShader: `varying vec3 vNormal; void main(){ float rim = 1.0 - abs(dot(vNormal, vec3(0,0,1))); float i = pow(rim, 6.0); gl_FragColor = vec4(0.9, 0.35, 0.0, 1.0) * i * 0.7; }`,
           side: THREE.BackSide,
           blending: THREE.AdditiveBlending,
           transparent: true,
