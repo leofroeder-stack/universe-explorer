@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, X, ExternalLink, Cpu, Zap } from 'lucide-react';
 import { PLANET_BODIES } from '../components/solar/solarData';
+import { base44 } from '@/api/base44Client';
 
 const PLANETS = [
   {
@@ -427,25 +428,38 @@ export default function SolarSystem() {
         if (loaded >= PLANETS.length) setIsLoading(false);
       } else {
         mat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.9 });
-        loader.load(
-          p.textureUrl,
-          (tex) => {
-            const loadedMat = new THREE.MeshStandardMaterial({
-              map: tex,
-              roughness: 0.65,
-              metalness: 0.05,
-            });
-            mesh.material = loadedMat;
-            mesh.material.needsUpdate = true;
+        // Load from local texture manager
+        base44.functions.invoke('textureManager', { action: 'get', textureKey: p.name.toLowerCase() })
+          .then(res => {
+            if (res.data?.signedUrl) {
+              loader.load(
+                res.data.signedUrl,
+                (tex) => {
+                  const loadedMat = new THREE.MeshStandardMaterial({
+                    map: tex,
+                    roughness: 0.65,
+                    metalness: 0.05,
+                  });
+                  mesh.material = loadedMat;
+                  mesh.material.needsUpdate = true;
+                  loaded++;
+                  if (loaded >= PLANETS.length) setIsLoading(false);
+                },
+                undefined,
+                () => {
+                  loaded++;
+                  if (loaded >= PLANETS.length) setIsLoading(false);
+                }
+              );
+            } else {
+              loaded++;
+              if (loaded >= PLANETS.length) setIsLoading(false);
+            }
+          })
+          .catch(() => {
             loaded++;
             if (loaded >= PLANETS.length) setIsLoading(false);
-          },
-          undefined,
-          () => {
-            loaded++;
-            if (loaded >= PLANETS.length) setIsLoading(false);
-          }
-        );
+          });
       }
 
       const mesh = new THREE.Mesh(geo, mat);

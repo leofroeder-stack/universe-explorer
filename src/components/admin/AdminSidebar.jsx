@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, Flag, LayoutDashboard, Eye, Globe, ArrowLeft } from 'lucide-react';
+import { Settings, Flag, LayoutDashboard, Eye, Globe, ArrowLeft, Image } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const NAV = [
@@ -8,6 +8,7 @@ const NAV = [
   { id: 'features', label: 'Feature Flags', icon: Flag },
   { id: 'navigation', label: 'Navigation', icon: Globe },
   { id: 'settings', label: 'App Settings', icon: Settings },
+  { id: 'textures', label: 'Textures', icon: Image },
 ];
 
 export default function AdminSidebar({ active, onChange }) {

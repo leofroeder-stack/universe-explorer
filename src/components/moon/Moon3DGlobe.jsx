@@ -18,34 +18,34 @@ const inFlightCache = {};
 
 const STORAGE_KEY_PREFIX = 'luna_tex_';
 
-async function fetchTextureDataUrl(url) {
+async function fetchTextureSignedUrl(textureKey) {
   // 1. Memory cache hit (fastest)
-  if (memoryCache[url]) return memoryCache[url];
+  if (memoryCache[textureKey]) return memoryCache[textureKey];
 
   // 2. SessionStorage cache hit (survives remounts)
   try {
-    const stored = sessionStorage.getItem(STORAGE_KEY_PREFIX + url);
+    const stored = sessionStorage.getItem(STORAGE_KEY_PREFIX + textureKey);
     if (stored) {
-      memoryCache[url] = stored;
+      memoryCache[textureKey] = stored;
       return stored;
     }
   } catch (_) {}
 
-  // 3. Deduplicate in-flight requests for the same URL
-  if (inFlightCache[url]) return inFlightCache[url];
+  // 3. Deduplicate in-flight requests for the same key
+  if (inFlightCache[textureKey]) return inFlightCache[textureKey];
 
-  inFlightCache[url] = (async () => {
-    const res = await base44.functions.invoke('proxyTexture', { url });
-    const dataUrl = res.data?.dataUrl;
-    if (dataUrl) {
-      memoryCache[url] = dataUrl;
-      try { sessionStorage.setItem(STORAGE_KEY_PREFIX + url, dataUrl); } catch (_) {}
+  inFlightCache[textureKey] = (async () => {
+    const res = await base44.functions.invoke('textureManager', { action: 'get', textureKey });
+    const signedUrl = res.data?.signedUrl;
+    if (signedUrl) {
+      memoryCache[textureKey] = signedUrl;
+      try { sessionStorage.setItem(STORAGE_KEY_PREFIX + textureKey, signedUrl); } catch (_) {}
     }
-    delete inFlightCache[url];
-    return dataUrl;
+    delete inFlightCache[textureKey];
+    return signedUrl;
   })();
 
-  return inFlightCache[url];
+  return inFlightCache[textureKey];
 }
 
 const DEFAULT_CAMERA_Z = 3.2;
@@ -243,10 +243,10 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       metalness: 0.0,
     });
 
-    // Fetch texture via backend proxy to avoid CORS/hotlink issues
-    fetchTextureDataUrl(textureUrl).then((dataUrl) => {
-      if (!dataUrl) { setIsLoading(false); return; }
-      textureLoader.load(dataUrl, (tex) => {
+    // Fetch texture via local signed URL
+    fetchTextureSignedUrl(planet).then((signedUrl) => {
+      if (!signedUrl) { setIsLoading(false); return; }
+      textureLoader.load(signedUrl, (tex) => {
         tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
         material.map = tex;
         material.bumpMap = tex;

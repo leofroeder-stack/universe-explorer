@@ -7,6 +7,7 @@ import VisibilityPanel from '@/components/admin/VisibilityPanel';
 import NavigationPanel from '@/components/admin/NavigationPanel';
 import FlagsPanel from '@/components/admin/FlagsPanel';
 import AppSettingsPanel from '@/components/admin/AppSettingsPanel';
+import TexturesPanel from '@/components/admin/TexturesPanel';
 
 export default function AdminDashboard() {
   const [section, setSection] = useState('overview');
@@ -52,6 +53,7 @@ export default function AdminDashboard() {
       case 'navigation':  return <NavigationPanel settings={settings} onToggle={handleToggleSetting} />;
       case 'features':    return <FlagsPanel flags={flags} onFlagsChange={setFlags} />;
       case 'settings':    return <AppSettingsPanel settings={settings} onSettingsChange={setSettings} />;
+      case 'textures':    return <TexturesPanel />;
       default:            return null;
     }
   };
