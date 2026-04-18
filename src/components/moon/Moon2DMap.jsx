@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Polyline, CircleMarker, useMap, useMap
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { LAYER_COLORS } from './moonData';
+import ScientificLayerOverlay, { ScientificLayerLegend } from './ScientificLayerOverlay';
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 7;
@@ -104,7 +105,7 @@ function MeasurementClickHandler({ measureActive, markers, onMeasurePoint }) {
   return null;
 }
 
-export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onSwitchTo3D, planet = 'moon', measureActive, measurePointA, measurePointB, onMeasurePoint }) {
+export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onSwitchTo3D, planet = 'moon', measureActive, measurePointA, measurePointB, onMeasurePoint, activeScientificLayers = [] }) {
   const moonTileUrl = TILE_URLS[planet] || TILE_URLS.moon;
 
   const markerElements = useMemo(() => {
@@ -149,10 +150,12 @@ export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onS
         <MapController selectedMarker={selectedMarker} />
         <ZoomControls />
         {onSwitchTo3D && <ZoomOutWatcher onSwitchTo3D={onSwitchTo3D} />}
+        <ScientificLayerOverlay activeScientificLayers={activeScientificLayers} />
         {markerElements}
         {measureLine}
         {measureActive && <MeasurementClickHandler measureActive={measureActive} markers={markers} onMeasurePoint={onMeasurePoint} />}
       </MapContainer>
+      <ScientificLayerLegend activeScientificLayers={activeScientificLayers} />
     </div>
   );
 }

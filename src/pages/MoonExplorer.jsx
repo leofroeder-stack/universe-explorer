@@ -34,6 +34,13 @@ export default function MoonExplorer() {
   const [activeLayers, setActiveLayers] = useState([
     LAYER_TYPES.MISSIONS, LAYER_TYPES.EVENTS, LAYER_TYPES.OBJECTS,
   ]);
+  const [activeScientificLayers, setActiveScientificLayers] = useState([]);
+
+  const toggleScientificLayer = useCallback((layer) => {
+    setActiveScientificLayers(prev =>
+      prev.includes(layer) ? prev.filter(l => l !== layer) : [...prev, layer]
+    );
+  }, []);
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [timeFilteredMarkers, setTimeFilteredMarkers] = useState(null);
   const [sliderYear, setSliderYear] = useState(null);
@@ -253,7 +260,12 @@ export default function MoonExplorer() {
             )}
             {!isHidden('hide_layer_controls') && (
               <div className="hidden md:block">
-                <LayerControls activeLayers={activeLayers} onToggleLayer={toggleLayer} />
+                <LayerControls
+                  activeLayers={activeLayers}
+                  onToggleLayer={toggleLayer}
+                  activeScientificLayers={activeScientificLayers}
+                  onToggleScientificLayer={toggleScientificLayer}
+                />
               </div>
             )}
             {!isHidden('hide_view_toggle') && (
@@ -316,15 +328,16 @@ export default function MoonExplorer() {
                 transition={{ duration: 0.4, ease: 'easeInOut' }}
               >
                 <Moon2DMap
-                  markers={displayedMarkers}
-                  selectedMarker={selectedMarker}
-                  onSelectMarker={handleSelectMarker}
-                  onSwitchTo3D={() => triggerViewTransition('3d')}
-                  planet={planet}
-                  measureActive={measureActive}
-                  measurePointA={measurePointA}
-                  measurePointB={measurePointB}
-                  onMeasurePoint={handleMeasurePoint}
+                 markers={displayedMarkers}
+                 selectedMarker={selectedMarker}
+                 onSelectMarker={handleSelectMarker}
+                 onSwitchTo3D={() => triggerViewTransition('3d')}
+                 planet={planet}
+                 measureActive={measureActive}
+                 measurePointA={measurePointA}
+                 measurePointB={measurePointB}
+                 onMeasurePoint={handleMeasurePoint}
+                 activeScientificLayers={activeScientificLayers}
                 />
                 {/* Time slider */}
                 {!isHidden('hide_time_slider') && (
@@ -445,7 +458,7 @@ export default function MoonExplorer() {
                 <span className="text-[11px] text-primary font-body font-medium">Up to {sliderYear}</span>
               ) : (
                 <span className="text-[11px] text-muted-foreground font-body">
-                  {activeLayers.length} layer{activeLayers.length !== 1 ? 's' : ''} active
+                  {activeLayers.length + activeScientificLayers.length} layer{(activeLayers.length + activeScientificLayers.length) !== 1 ? 's' : ''} active
                 </span>
               )}
             </div>
