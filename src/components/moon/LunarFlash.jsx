@@ -144,6 +144,9 @@ export default function LunarFlash({ enabled, mode = '2d', globeRotationRef, cam
         const radius = f.maxRadius * (0.3 + 0.7 * intensity);
         const alpha  = intensity * 0.92;
 
+        // Guard: skip if any value is non-finite or radius is zero
+        if (!isFinite(screenX) || !isFinite(screenY) || !isFinite(radius) || radius <= 0) return;
+
         // Outer soft glow
         const grd = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, radius * 3.5);
         grd.addColorStop(0,   hexToRgba(f.color, alpha * 0.7));
