@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { Globe, Map, Scan, Moon, Ruler } from 'lucide-react';
+import { Globe, Map, Scan, Moon, Ruler, PanelLeftClose, PanelLeftOpen, EyeOff, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Moon3DGlobe from '../components/moon/Moon3DGlobe';
@@ -36,6 +36,8 @@ export default function MoonExplorer() {
   const [timeFilteredMarkers, setTimeFilteredMarkers] = useState(null);
   const [sliderYear, setSliderYear] = useState(null);
   // Transition animation state
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [uiHidden, setUiHidden] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [transitionPhase, setTransitionPhase] = useState(null); // 'zoom-in' | 'flash' | null
   const transitionTargetRef = useRef(null); // '2d' or '3d'
@@ -134,7 +136,7 @@ export default function MoonExplorer() {
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-border bg-card/50 backdrop-blur-xl">
+      <header className={`flex-shrink-0 border-b border-border bg-card/50 backdrop-blur-xl transition-all duration-300 ${uiHidden ? 'hidden' : ''}`}>
         <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <MobileMenuDrawer
@@ -250,7 +252,8 @@ export default function MoonExplorer() {
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        <aside className="hidden lg:block w-72 border-r border-border bg-card/30 flex-shrink-0 overflow-hidden">
+        {/* Retractable Sidebar */}
+        <aside className={`hidden lg:flex flex-col border-r border-border bg-card/30 flex-shrink-0 overflow-hidden transition-all duration-300 ${uiHidden ? '!hidden' : ''} ${sidebarOpen ? 'w-72' : 'w-0'}`}>
           <Sidebar
             markers={displayedMarkers}
             selectedMarker={selectedMarker}
@@ -277,6 +280,7 @@ export default function MoonExplorer() {
                   onSelectMarker={measureActive ? handleMeasurePoint : handleSelectMarker}
                   onAutoSwitch2D={handleAutoSwitch2D}
                   planet={planet}
+                  uiHidden={uiHidden}
                 />
               </motion.div>
             ) : (
@@ -340,11 +344,35 @@ export default function MoonExplorer() {
             )}
           </AnimatePresence>
 
+          {/* Sidebar toggle button — desktop only */}
+          {!uiHidden && (
+            <button
+              onClick={() => setSidebarOpen(o => !o)}
+              className="hidden lg:flex absolute top-4 left-4 z-[600] w-9 h-9 rounded-xl bg-card/90 backdrop-blur-xl border border-border items-center justify-center hover:bg-secondary transition-colors shadow-lg"
+              title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            >
+              {sidebarOpen ? <PanelLeftClose className="w-4 h-4 text-foreground" /> : <PanelLeftOpen className="w-4 h-4 text-foreground" />}
+            </button>
+          )}
+
+          {/* Hide / Show all UI button */}
+          <button
+            onClick={() => setUiHidden(h => !h)}
+            className={`absolute z-[700] w-9 h-9 rounded-xl backdrop-blur-xl border items-center justify-center transition-all shadow-lg flex ${
+              uiHidden
+                ? 'top-4 right-16 bg-primary/20 border-primary/60 text-primary hover:bg-primary/30'
+                : 'top-4 right-16 bg-card/90 border-border text-muted-foreground hover:text-foreground hover:bg-secondary'
+            }`}
+            title={uiHidden ? 'Show interface' : 'Hide interface (focus mode)'}
+          >
+            {uiHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+          </button>
+
           {/* Info panel */}
-          <InfoPanel marker={selectedMarker} onClose={() => setSelectedMarker(null)} />
+          {!uiHidden && <InfoPanel marker={selectedMarker} onClose={() => setSelectedMarker(null)} />}
 
           {/* Measurement result card */}
-          {measureActive && isEnabled('measurements') && (
+          {!uiHidden && measureActive && isEnabled('measurements') && (
             <div className="absolute top-4 right-4 z-[600]">
               <MeasurementTool
                 isActive={measureActive}
@@ -379,22 +407,24 @@ export default function MoonExplorer() {
           )}
 
           {/* Space Audio Player */}
-          <SpaceAudioPlayer />
+          {!uiHidden && <SpaceAudioPlayer />}
 
           {/* Stats bar */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-card/90 backdrop-blur-xl rounded-full border border-border shadow-xl z-[400]">
-            <span className="text-[11px] text-muted-foreground font-body">
-              Showing <span className="text-foreground font-medium">{displayedMarkers.length}</span> locations
-            </span>
-            <div className="w-px h-3 bg-border" />
-            {sliderYear && viewMode === '2d' ? (
-              <span className="text-[11px] text-primary font-body font-medium">Up to {sliderYear}</span>
-            ) : (
+          {!uiHidden && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-card/90 backdrop-blur-xl rounded-full border border-border shadow-xl z-[400]">
               <span className="text-[11px] text-muted-foreground font-body">
-                {activeLayers.length} layer{activeLayers.length !== 1 ? 's' : ''} active
+                Showing <span className="text-foreground font-medium">{displayedMarkers.length}</span> locations
               </span>
-            )}
-          </div>
+              <div className="w-px h-3 bg-border" />
+              {sliderYear && viewMode === '2d' ? (
+                <span className="text-[11px] text-primary font-body font-medium">Up to {sliderYear}</span>
+              ) : (
+                <span className="text-[11px] text-muted-foreground font-body">
+                  {activeLayers.length} layer{activeLayers.length !== 1 ? 's' : ''} active
+                </span>
+              )}
+            </div>
+          )}
         </main>
       </div>
     </div>

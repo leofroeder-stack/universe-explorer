@@ -47,7 +47,7 @@ export default function SunAngleDisplay({ sunLightRef }) {
   const azLabel = `${((sunInfo.azimuth + 360) % 360).toFixed(1)}°`;
 
   return (
-    <div className="absolute bottom-20 right-20 z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card/80 backdrop-blur-xl border border-border shadow-lg">
+    <div className="absolute bottom-20 left-4 z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card/80 backdrop-blur-xl border border-border shadow-lg">
       <Sun className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
       <div className="flex flex-col leading-tight">
         <span className="text-[9px] text-muted-foreground font-body uppercase tracking-wide">Sun Angle</span>

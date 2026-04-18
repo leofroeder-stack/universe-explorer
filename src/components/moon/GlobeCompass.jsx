@@ -90,7 +90,7 @@ export default function GlobeCompass({ globeRotationRef }) {
   }, [globeRotationRef]);
 
   return (
-    <div className="absolute bottom-20 right-4 z-30" title="Orientation compass">
+    <div className="absolute top-4 right-4 z-30" title="Orientation compass">
       <canvas
         ref={canvasRef}
         width={72}

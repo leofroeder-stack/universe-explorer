@@ -151,7 +151,7 @@ export default function SpaceAudioPlayer() {
     <>
       <audio ref={audioRef} loop preload="none" />
 
-      <div className="absolute bottom-14 right-4 z-[500] flex flex-col items-end gap-2">
+      <div className="absolute bottom-16 right-4 z-[500] flex flex-col items-end gap-2">
         <AnimatePresence>
           {expanded && (
             <motion.div

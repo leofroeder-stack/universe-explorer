@@ -61,7 +61,7 @@ const PLANET_GLOW = {
   mars: 'vec4(0.6, 0.25, 0.1, 1.0)',
 };
 
-export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon' }) {
+export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon', uiHidden = false }) {
   const containerRef = useRef(null);
   const sceneRef = useRef({});
   const [isLoading, setIsLoading] = useState(true);
@@ -575,7 +575,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       )}
 
       {/* Zoom, Reset & Phase Controls */}
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
+      {!uiHidden && <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
         <button onClick={() => handleZoom(-1)}
           className="w-9 h-9 rounded-xl bg-card/90 backdrop-blur-xl border border-border flex items-center justify-center hover:bg-secondary transition-colors shadow-lg"
           title="Zoom In">
@@ -611,11 +611,11 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
             <Telescope className="w-4 h-4" />
           </button>
         )}
-      </div>
+      </div>}
 
       {/* Sun angle + compass overlays */}
-      <SunAngleDisplay sunLightRef={sunLightRef} />
-      <GlobeCompass globeRotationRef={globeRotYRef} />
+      {!uiHidden && <SunAngleDisplay sunLightRef={sunLightRef} />}
+      {!uiHidden && <GlobeCompass globeRotationRef={globeRotYRef} />}
 
       {/* Guided tour */}
       <GuidedTour
@@ -625,9 +625,11 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
         onClose={() => setTourActive(false)}
       />
 
-      <div className="absolute bottom-14 left-4 text-[10px] text-muted-foreground/60 font-body">
-        Drag to rotate • Pinch/scroll to zoom • Tap markers
-      </div>
+      {!uiHidden && (
+        <div className="absolute bottom-14 left-4 text-[10px] text-muted-foreground/60 font-body">
+          Drag to rotate • Pinch/scroll to zoom • Tap markers
+        </div>
+      )}
     </div>
   );
 }
