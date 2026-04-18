@@ -3,6 +3,7 @@ import { X, MapPin, Calendar, Users, Flag, Ruler, ExternalLink, Youtube, Images 
 import { LAYER_COLORS } from './moonData';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImagePreviewModal from './ImagePreviewModal';
+import YoutubeModal from './YoutubeModal';
 
 const NASA_URLS = {
   missions: 'https://www.nasa.gov/missions/',
@@ -12,6 +13,7 @@ const NASA_URLS = {
 
 export default function InfoPanel({ marker, onClose }) {
   const [imageOpen, setImageOpen] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
 
   if (!marker) return null;
 
@@ -109,15 +111,13 @@ export default function InfoPanel({ marker, onClose }) {
                   </button>
                 )}
                 {hasYoutube && (
-                  <a
-                    href={marker.youtubeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => setVideoOpen(true)}
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-body font-semibold bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600/30 transition-all"
                   >
                     <Youtube className="w-3.5 h-3.5" />
                     Watch
-                  </a>
+                  </button>
                 )}
               </div>
             )}
@@ -145,6 +145,13 @@ export default function InfoPanel({ marker, onClose }) {
         color={color}
         isOpen={imageOpen}
         onClose={() => setImageOpen(false)}
+      />
+
+      <YoutubeModal
+        url={marker.youtubeUrl}
+        title={marker.name}
+        isOpen={videoOpen}
+        onClose={() => setVideoOpen(false)}
       />
     </>
   );
