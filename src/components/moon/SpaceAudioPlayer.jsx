@@ -2,63 +2,69 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Volume2, VolumeX, Music, ChevronUp, ChevronDown, Upload, Play, Pause, SkipForward, SkipBack } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Working NASA space sounds — sourced from NASA SoundCloud (public domain)
-// and NASA's own audio archive. These are direct mp3 links verified working.
+// NASA historical sounds from Internet Archive (public domain, verified working)
+// Source: https://archive.org/details/NasaAudioHighlightReels
+const ARCHIVE_BASE = 'https://archive.org/download/NasaAudioHighlightReels';
+
 const LIBRARY = [
   {
     id: 's1',
-    name: 'Earth Whistlers',
-    source: 'NASA / EMFISIS instrument',
+    name: 'Space Shuttle Launch (STS-1)',
+    source: 'NASA / Kennedy Space Center',
     license: 'Public Domain – NASA',
-    // Van Allen Probes - Earth magnetospheric whistler waves
-    url: 'https://www.nasa.gov/wp-content/uploads/2023/07/661916main_whistler_waves.mp3',
+    url: `${ARCHIVE_BASE}/Launch-Sound_STS-1-Launch.mp3`,
   },
   {
     id: 's2',
-    name: 'Saturn Radio Emissions',
-    source: 'NASA / Cassini',
+    name: 'Saturn V Launch',
+    source: 'NASA / Apollo Program',
     license: 'Public Domain – NASA',
-    url: 'https://www.nasa.gov/wp-content/uploads/2023/07/661913main_saturnRadioEmissions.mp3',
+    url: `${ARCHIVE_BASE}/Launch-Sound_Saturn-V.mp3`,
   },
   {
     id: 's3',
-    name: 'Jupiter Bow Shock',
-    source: 'NASA / Voyager',
+    name: 'Shuttle Launch – Close Up',
+    source: 'NASA / Kennedy Space Center',
     license: 'Public Domain – NASA',
-    url: 'https://www.nasa.gov/wp-content/uploads/2023/07/661915main_jupiterBowShock.mp3',
+    url: `${ARCHIVE_BASE}/Launch-Sound_Shuttle-Launch-Close.mp3`,
   },
   {
     id: 's4',
-    name: 'Lunar Surface (Apollo EVA)',
-    source: 'NASA / Apollo 11',
+    name: 'Apollo 11 Highlights',
+    source: 'NASA / Apollo 11 Mission',
     license: 'Public Domain – NASA',
-    url: 'https://www.nasa.gov/wp-content/uploads/2023/07/661912main_onestep.mp3',
+    url: `${ARCHIVE_BASE}/Apollo11Highlights.mp3`,
   },
   {
     id: 's5',
-    name: 'Solar Wind',
-    source: 'NASA / ACE Spacecraft',
+    name: 'Apollo 13 Highlights',
+    source: 'NASA / Apollo 13 Mission',
     license: 'Public Domain – NASA',
-    url: 'https://www.nasa.gov/wp-content/uploads/2023/07/661917main_solar_wind.mp3',
+    url: `${ARCHIVE_BASE}/Apollo13Highlights.mp3`,
   },
   {
     id: 's6',
-    name: 'Mir Space Station Sounds',
-    source: 'NASA Historical Archive',
+    name: 'Shuttle Landing',
+    source: 'NASA / Space Shuttle Program',
     license: 'Public Domain – NASA',
-    url: 'https://www.nasa.gov/wp-content/uploads/2023/07/661904main_ambience.mp3',
+    url: `${ARCHIVE_BASE}/Launch-Sound_Shuttle-Landing.mp3`,
+  },
+  {
+    id: 's7',
+    name: 'Female Voice Countdown',
+    source: 'NASA / Kennedy Space Center',
+    license: 'Public Domain – NASA',
+    url: `${ARCHIVE_BASE}/Launch-Sound_Female-Voice-Countdown.mp3`,
+  },
+  {
+    id: 's8',
+    name: 'JFK Rice University Speech',
+    source: 'NASA / JFK Historic Audio',
+    license: 'Public Domain – NASA',
+    url: `${ARCHIVE_BASE}/JFK-Rice-Speech.mp3`,
   },
 ];
 
-// Try multiple URL patterns for NASA audio — they keep reorganizing their CDN
-function makeFallbackUrls(track) {
-  const filename = track.url.split('/').pop();
-  return [
-    track.url,
-    `https://www.nasa.gov/wp-content/uploads/2024/07/${filename}`,
-    `https://www.nasa.gov/wp-content/uploads/2015/01/${filename}`,
-  ];
-}
 
 export default function SpaceAudioPlayer() {
   const [expanded, setExpanded] = useState(false);
@@ -230,7 +236,7 @@ export default function SpaceAudioPlayer() {
               {/* Attribution */}
               <div className="px-4 py-2.5 bg-muted/30 border-t border-border">
                 <p className="text-[9px] text-muted-foreground/70 font-body leading-relaxed">
-                  Space sounds from <strong>NASA.gov</strong> — public domain. All recordings are property of NASA and respective agencies. Luna Atlas does not claim ownership of any audio content.
+                  Audio from <strong>NASA Historical Archive</strong> via Internet Archive — public domain. All recordings are property of NASA. Luna Atlas does not claim ownership.
                 </p>
               </div>
             </motion.div>
