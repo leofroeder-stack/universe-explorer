@@ -18,34 +18,34 @@ const inFlightCache = {};
 
 const STORAGE_KEY_PREFIX = 'luna_tex_';
 
-async function fetchTextureSignedUrl(textureKey) {
+async function fetchTextureDataUrl(url) {
   // 1. Memory cache hit (fastest)
-  if (memoryCache[textureKey]) return memoryCache[textureKey];
+  if (memoryCache[url]) return memoryCache[url];
 
   // 2. SessionStorage cache hit (survives remounts)
   try {
-    const stored = sessionStorage.getItem(STORAGE_KEY_PREFIX + textureKey);
+    const stored = sessionStorage.getItem(STORAGE_KEY_PREFIX + url);
     if (stored) {
-      memoryCache[textureKey] = stored;
+      memoryCache[url] = stored;
       return stored;
     }
   } catch (_) {}
 
-  // 3. Deduplicate in-flight requests for the same key
-  if (inFlightCache[textureKey]) return inFlightCache[textureKey];
+  // 3. Deduplicate in-flight requests for the same URL
+  if (inFlightCache[url]) return inFlightCache[url];
 
-  inFlightCache[textureKey] = (async () => {
-    const res = await base44.functions.invoke('textureManager', { action: 'get', textureKey });
-    const signedUrl = res.data?.signedUrl;
-    if (signedUrl) {
-      memoryCache[textureKey] = signedUrl;
-      try { sessionStorage.setItem(STORAGE_KEY_PREFIX + textureKey, signedUrl); } catch (_) {}
+  inFlightCache[url] = (async () => {
+    const res = await base44.functions.invoke('proxyTexture', { url });
+    const dataUrl = res.data?.dataUrl;
+    if (dataUrl) {
+      memoryCache[url] = dataUrl;
+      try { sessionStorage.setItem(STORAGE_KEY_PREFIX + url, dataUrl); } catch (_) {}
     }
-    delete inFlightCache[textureKey];
-    return signedUrl;
+    delete inFlightCache[url];
+    return dataUrl;
   })();
 
-  return inFlightCache[textureKey];
+  return inFlightCache[url];
 }
 
 const DEFAULT_CAMERA_Z = 3.2;
@@ -243,54 +243,18 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       metalness: 0.0,
     });
 
-    // Fetch texture via local signed URL, with fallback to source
-    fetchTextureSignedUrl(planet).then((signedUrl) => {
-      if (!signedUrl) {
-        // Fallback: use original texture URL
-        textureLoader.load(textureUrl, (tex) => {
-          tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-          material.map = tex;
-          material.bumpMap = tex;
-          material.bumpScale = 0.012;
-          material.needsUpdate = true;
-          setIsLoading(false);
-        }, undefined, () => setIsLoading(false));
-        return;
-      }
-      textureLoader.load(
-        signedUrl,
-        (tex) => {
-          tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-          material.map = tex;
-          material.bumpMap = tex;
-          material.bumpScale = 0.012;
-          material.needsUpdate = true;
-          setIsLoading(false);
-        },
-        undefined,
-        () => {
-          // Local load failed, fallback to source
-          textureLoader.load(textureUrl, (tex) => {
-            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            material.map = tex;
-            material.bumpMap = tex;
-            material.bumpScale = 0.012;
-            material.needsUpdate = true;
-            setIsLoading(false);
-          }, undefined, () => setIsLoading(false));
-        }
-      );
-    }).catch(() => {
-      // Fallback: use original texture URL
-      textureLoader.load(textureUrl, (tex) => {
+    // Fetch texture via backend proxy to avoid CORS/hotlink issues
+    fetchTextureDataUrl(textureUrl).then((dataUrl) => {
+      if (!dataUrl) { setIsLoading(false); return; }
+      textureLoader.load(dataUrl, (tex) => {
         tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
         material.map = tex;
         material.bumpMap = tex;
         material.bumpScale = 0.012;
         material.needsUpdate = true;
         setIsLoading(false);
-      }, undefined, () => setIsLoading(false));
-    });
+      });
+    }).catch(() => setIsLoading(false));
 
     const moon = new THREE.Mesh(geometry, material);
     moon.receiveShadow = true;
