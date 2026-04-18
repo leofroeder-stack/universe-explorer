@@ -147,6 +147,21 @@ export default function MoonExplorer() {
               onSelectMarker={handleSelectMarker}
               activeLayers={activeLayers}
               onToggleLayer={toggleLayer}
+              planet={planet}
+              onPlanetChange={(key) => {
+                if (key !== planet) {
+                  setPlanet(key);
+                  setSelectedMarker(null);
+                  setTimeFilteredMarkers(null);
+                  setSliderYear(null);
+                }
+              }}
+              viewMode={viewMode}
+              onViewModeChange={(v) => { if (v !== viewMode) triggerViewTransition(v); }}
+              measureActive={measureActive}
+              onToggleMeasure={() => { setMeasureActive(a => !a); handleMeasureClear(); }}
+              onOpenMoonCycle={() => setMoonCycleOpen(true)}
+              onOpenAR={() => setArOpen(true)}
             />
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
               <Globe className="w-5 h-5 text-primary" />
