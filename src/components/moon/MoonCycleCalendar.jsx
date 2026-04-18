@@ -106,7 +106,7 @@ export default function MoonCycleCalendar({ isOpen, onClose, onJumpToDate }) {
             onClick={onClose}
           />
           <motion.div
-            className="fixed inset-x-4 top-16 bottom-4 md:inset-auto md:right-4 md:top-16 md:w-[420px] md:bottom-auto z-[800] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed inset-x-4 top-16 bottom-4 md:inset-auto md:right-4 md:top-16 md:w-[420px] md:max-h-[calc(100dvh-5rem)] z-[800] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
