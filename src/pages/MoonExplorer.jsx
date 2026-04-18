@@ -167,7 +167,7 @@ export default function MoonExplorer() {
               <Globe className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h1 className="font-heading font-bold text-lg leading-tight">Luna Atlas</h1>
+              <h1 className="font-heading font-bold text-lg leading-tight">Universe Explorer</h1>
               <p className="text-[11px] text-muted-foreground font-body">
                 {planet === 'mars' ? 'Interactive Mars Explorer' : 'Interactive Moon Explorer'}
               </p>

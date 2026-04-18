@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, X, ExternalLink } from 'lucide-react';
+import { ArrowLeft, X, ExternalLink, Cpu, Zap } from 'lucide-react';
 import { PLANET_BODIES } from '../components/solar/solarData';
 
 const PLANETS = [
@@ -122,10 +122,23 @@ export default function SolarSystem() {
   const [zoomRadius, setZoomRadius] = useState(110);
   const sunShaderRef = useRef(null);
   const sunCoronaRef = useRef([]);
+  const [webglQuality, setWebglQuality] = useState(() => {
+    return localStorage.getItem('ue_webgl_quality') || 'high';
+  });
+  const webglQualityRef = useRef(webglQuality);
 
   const handlePause = useCallback(() => {
     pausedRef.current = !pausedRef.current;
     setPaused(pausedRef.current);
+  }, []);
+
+  const handleToggleQuality = useCallback(() => {
+    const next = webglQualityRef.current === 'high' ? 'low' : 'high';
+    webglQualityRef.current = next;
+    setWebglQuality(next);
+    localStorage.setItem('ue_webgl_quality', next);
+    // Reload the scene by remounting — simplest approach for renderer settings
+    window.location.reload();
   }, []);
 
   useEffect(() => {
@@ -142,11 +155,19 @@ export default function SolarSystem() {
     camera.position.set(0, 55, 90);
     camera.lookAt(0, 0, 0);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const quality = webglQualityRef.current;
+    const renderer = new THREE.WebGLRenderer({
+      antialias: quality === 'high',
+      powerPreference: quality === 'high' ? 'high-performance' : 'low-power',
+      precision: quality === 'high' ? 'highp' : 'mediump',
+    });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
+    renderer.setPixelRatio(quality === 'high' ? Math.min(window.devicePixelRatio, 2) : 1);
+    renderer.shadowMap.enabled = quality === 'high';
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
     container.appendChild(renderer.domElement);
+    sceneRef.current.renderer = renderer;
 
     // ── Near stars (visible at solar system scale) ──────────────────────────
     const nearStarsGeo = new THREE.BufferGeometry();
@@ -270,16 +291,14 @@ export default function SolarSystem() {
 
       let mat;
       if (p.name === 'Sun') {
-        // Animated procedural Sun shader — no texture needed
+        // Realistic animated Sun — photosphere granulation + chromosphere + sunspots
         mat = new THREE.ShaderMaterial({
           uniforms: { uTime: { value: 0.0 } },
           vertexShader: `
             varying vec3 vNormal;
-            varying vec2 vUv;
             varying vec3 vPosition;
             void main() {
               vNormal = normalize(normalMatrix * normal);
-              vUv = uv;
               vPosition = position;
               gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
             }
@@ -287,83 +306,124 @@ export default function SolarSystem() {
           fragmentShader: `
             uniform float uTime;
             varying vec3 vNormal;
-            varying vec2 vUv;
             varying vec3 vPosition;
 
-            // Hash-based noise helpers
+            // Fast hash
+            vec2 hash2(vec2 p) {
+              p = vec2(dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)));
+              return fract(sin(p)*43758.5453);
+            }
             vec3 hash3(vec3 p) {
-              p = fract(p * vec3(443.8975, 397.2973, 491.1871));
-              p += dot(p.zxy, p.yxz + 19.19);
-              return fract(vec3(p.x * p.y, p.z * p.x, p.y * p.z));
+              p = fract(p * vec3(443.897,441.423,437.195));
+              p += dot(p, p.yxz + 19.19);
+              return fract(vec3(p.x*p.y, p.z*p.x, p.y*p.z));
             }
-            float noise(vec3 p) {
-              vec3 i = floor(p);
-              vec3 f = fract(p);
-              f = f*f*(3.0-2.0*f);
+
+            // Smooth gradient noise
+            float gnoise(vec3 p) {
+              vec3 i = floor(p); vec3 f = fract(p);
+              f = f*f*(3.0 - 2.0*f);
               return mix(
-                mix(mix(dot(hash3(i+vec3(0,0,0))-0.5, f-vec3(0,0,0)),
-                        dot(hash3(i+vec3(1,0,0))-0.5, f-vec3(1,0,0)), f.x),
-                    mix(dot(hash3(i+vec3(0,1,0))-0.5, f-vec3(0,1,0)),
-                        dot(hash3(i+vec3(1,1,0))-0.5, f-vec3(1,1,0)), f.x), f.y),
-                mix(mix(dot(hash3(i+vec3(0,0,1))-0.5, f-vec3(0,0,1)),
-                        dot(hash3(i+vec3(1,0,1))-0.5, f-vec3(1,0,1)), f.x),
-                    mix(dot(hash3(i+vec3(0,1,1))-0.5, f-vec3(0,1,1)),
-                        dot(hash3(i+vec3(1,1,1))-0.5, f-vec3(1,1,1)), f.x), f.y), f.z);
+                mix(mix(dot(hash3(i)-0.5, f),          dot(hash3(i+vec3(1,0,0))-0.5, f-vec3(1,0,0)), f.x),
+                    mix(dot(hash3(i+vec3(0,1,0))-0.5, f-vec3(0,1,0)), dot(hash3(i+vec3(1,1,0))-0.5, f-vec3(1,1,0)), f.x), f.y),
+                mix(mix(dot(hash3(i+vec3(0,0,1))-0.5, f-vec3(0,0,1)), dot(hash3(i+vec3(1,0,1))-0.5, f-vec3(1,0,1)), f.x),
+                    mix(dot(hash3(i+vec3(0,1,1))-0.5, f-vec3(0,1,1)), dot(hash3(i+vec3(1,1,1))-0.5, f-vec3(1,1,1)), f.x), f.y), f.z);
             }
-            float fbm(vec3 p) {
-              float v = 0.0;
-              float a = 0.5;
-              for(int i=0; i<6; i++) {
-                v += a * noise(p);
-                p = p * 2.1 + vec3(0.3, 0.7, 1.1);
+
+            // FBM
+            float fbm(vec3 p, int oct) {
+              float v=0.0, a=0.5;
+              for(int i=0; i<8; i++) {
+                if(i>=oct) break;
+                v += a * gnoise(p);
+                p = p*2.03 + vec3(0.31,0.71,1.11);
                 a *= 0.5;
               }
               return v;
             }
 
+            // Voronoi for solar granulation cells (convection cells)
+            float voronoi(vec3 x) {
+              vec3 p = floor(x), f = fract(x);
+              float res = 8.0;
+              for(int k=-1; k<=1; k++)
+              for(int j=-1; j<=1; j++)
+              for(int i=-1; i<=1; i++) {
+                vec3 b = vec3(float(i),float(j),float(k));
+                vec3 r = b - f + hash3(p+b);
+                float d = dot(r,r);
+                res = min(res, d);
+              }
+              return sqrt(res);
+            }
+
             void main() {
-              vec3 p = normalize(vPosition);
+              vec3 n = normalize(vPosition);
               float t = uTime;
 
-              // Turbulent plasma flow — two layers offset in time
-              float n1 = fbm(p * 2.5 + vec3(t * 0.08, t * 0.06, t * 0.05));
-              float n2 = fbm(p * 4.0 - vec3(t * 0.05, t * 0.09, t * 0.07));
-              float plasma = n1 * 0.65 + n2 * 0.35;
-              plasma = clamp(plasma * 2.0 - 0.3, 0.0, 1.0);
+              // ── Photosphere granulation (convection cells) ───────────────
+              // Large granules (~10 cells across surface)
+              float gran = voronoi(n * 6.0 + vec3(t*0.012, t*0.008, t*0.006));
+              // Super-granules (larger, slower)
+              float superGran = voronoi(n * 2.5 + vec3(t*0.004, t*0.003, t*0.005));
+              // Cell interiors bright (rising hot plasma), borders dark (cooling descending)
+              float cell = smoothstep(0.0, 0.55, gran) * 0.7 + smoothstep(0.0, 0.8, superGran) * 0.3;
 
-              // Dark sunspot regions (magnetic field concentrations)
-              float spot = fbm(p * 3.5 + vec3(t * 0.03, 0.0, t * 0.04));
-              float spotMask = smoothstep(0.62, 0.55, spot); // dark where spot is high
+              // ── Turbulent plasma convection ──────────────────────────────
+              float turb1 = fbm(n * 3.5 + vec3(t*0.06, t*0.05, t*0.04), 6);
+              float turb2 = fbm(n * 7.0 - vec3(t*0.04, t*0.07, t*0.05), 4);
+              float plasma = turb1*0.6 + turb2*0.4;
+              plasma = clamp(plasma * 2.2 - 0.2, 0.0, 1.0);
 
-              // Color ramp: deep amber-red core → golden → bright white-yellow
-              vec3 colDark  = vec3(0.35, 0.10, 0.01); // dark magnetic region
-              vec3 colMid   = vec3(0.85, 0.42, 0.02); // mid amber
-              vec3 colBright= vec3(1.00, 0.80, 0.25); // bright golden plasma
-              vec3 colHot   = vec3(1.00, 0.97, 0.80); // near-white hot spot
+              // ── Sunspot regions ──────────────────────────────────────────
+              // Spots drift slowly, appear mostly near equator
+              float spotNoise = fbm(n * 2.8 + vec3(t*0.015, 0.0, t*0.012), 4);
+              // Equatorial band mask
+              float equator = 1.0 - abs(n.y) * 2.0;
+              equator = clamp(equator, 0.0, 1.0);
+              float spotMask = smoothstep(0.55, 0.48, spotNoise) * equator;
+              // Penumbra (lighter outer ring of spot)
+              float penumbra = smoothstep(0.58, 0.50, spotNoise) * equator;
 
-              vec3 baseColor = mix(colDark, colMid, plasma);
-              baseColor = mix(baseColor, colBright, smoothstep(0.35, 0.7, plasma));
-              baseColor = mix(baseColor, colHot, smoothstep(0.72, 0.95, plasma));
+              // ── Color ramp (photosphere temperature gradient) ────────────
+              // Photospheric temperatures: ~4000K (spot) → 5800K (surface) → 6500K (faculae)
+              vec3 cSpot    = vec3(0.18, 0.04, 0.01); // umbra — very dark reddish
+              vec3 cPenum   = vec3(0.55, 0.20, 0.03); // penumbra — dark orange
+              vec3 cGranBord= vec3(0.70, 0.32, 0.02); // granule border — deep amber
+              vec3 cGranMid = vec3(0.95, 0.58, 0.06); // granule mid — golden orange
+              vec3 cGranTop = vec3(1.00, 0.82, 0.28); // granule interior — bright yellow
+              vec3 cFacula  = vec3(1.00, 0.96, 0.82); // faculae/hot spots — near white
 
-              // Apply sunspot darkening
-              baseColor = mix(baseColor * 0.18, baseColor, spotMask);
+              // Build color from cell brightness + plasma
+              vec3 col = mix(cGranBord, cGranMid, cell);
+              col = mix(col, cGranTop, smoothstep(0.4, 0.8, plasma * cell));
+              // Faculae bright active regions
+              float facula = smoothstep(0.7, 0.9, plasma) * smoothstep(0.5, 0.8, cell);
+              col = mix(col, cFacula, facula * 0.65);
+              // Apply sunspots on top
+              col = mix(col, cPenum, penumbra * 0.85);
+              col = mix(col, cSpot, spotMask * 0.95);
 
-              // Limb darkening — edges of sphere are cooler/darker
-              float limb = dot(vNormal, vec3(0.0, 0.0, 1.0));
-              float limbDarken = pow(max(limb, 0.0), 0.45);
-              baseColor *= mix(0.45, 1.0, limbDarken);
+              // ── Limb darkening (physically accurate ~T^4 falloff) ────────
+              float cosTheta = dot(normalize(vNormal), vec3(0.0, 0.0, 1.0));
+              float limb = clamp(cosTheta, 0.0, 1.0);
+              // Eddington limb darkening: I(mu) = I0 * (0.4 + 0.6*mu)
+              float ld = 0.3 + 0.7 * pow(limb, 0.6);
+              col *= ld;
 
-              // Bright active region flares
-              float flare = fbm(p * 6.0 + vec3(t * 0.18, t * 0.12, 0.0));
-              float flareMask = smoothstep(0.58, 0.75, flare) * smoothstep(0.1, 0.4, limb);
-              baseColor += vec3(1.0, 0.85, 0.4) * flareMask * 0.6;
+              // ── Solar flare bright arcs ──────────────────────────────────
+              float flareSeed = fbm(n * 9.0 + vec3(t*0.22, t*0.17, 0.0), 3);
+              float flareArc = smoothstep(0.62, 0.78, flareSeed);
+              // Only at limb/edge
+              float limbRegion = smoothstep(0.5, 0.1, limb);
+              col += vec3(1.0, 0.7, 0.2) * flareArc * limbRegion * 0.9;
 
-              gl_FragColor = vec4(baseColor, 1.0);
+              gl_FragColor = vec4(col, 1.0);
             }
           `,
         });
         sunShaderRef.current = mat;
-        loaded++; // Sun doesn't need texture loading
+        loaded++;
         if (loaded >= PLANETS.length) setIsLoading(false);
       } else {
         mat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.9 });
@@ -623,11 +683,25 @@ export default function SolarSystem() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="font-heading font-bold text-lg leading-tight text-white">Solar System</h1>
-            <p className="text-[11px] text-white/50 font-body">Interactive 3D Overview</p>
+            <h1 className="font-heading font-bold text-lg leading-tight text-white">Universe Explorer</h1>
+            <p className="text-[11px] text-white/50 font-body">Interactive 3D Solar System</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* WebGL Quality Toggle */}
+          <button
+            onClick={handleToggleQuality}
+            title={webglQuality === 'high' ? 'Switch to Low Power mode' : 'Switch to High Quality mode'}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body font-medium border transition-colors ${
+              webglQuality === 'high'
+                ? 'border-yellow-500/50 text-yellow-400 hover:border-yellow-400'
+                : 'border-white/20 text-white/50 hover:text-white hover:border-white/40'
+            }`}
+          >
+            {webglQuality === 'high'
+              ? <><Zap className="w-3.5 h-3.5" /> High Quality</>
+              : <><Cpu className="w-3.5 h-3.5" /> Low Power</>}
+          </button>
           <button
             onClick={handlePause}
             className="px-3 py-1.5 rounded-lg text-xs font-body font-medium border border-white/20 text-white/70 hover:text-white hover:border-white/40 transition-colors"
