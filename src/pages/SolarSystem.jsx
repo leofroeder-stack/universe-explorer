@@ -349,7 +349,8 @@ export default function SolarSystem() {
       mouse2.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse2, camera);
       const hits = raycaster.intersectObjects(planetMeshes);
-      setHoveredPlanet(hits.length > 0 ? hits[0].object.userData.planet.name : null);
+      const hitPlanet = hits.length > 0 ? hits[0].object.userData.planet : null;
+      setHoveredPlanet(hitPlanet ? hitPlanet.name : null);
     };
 
     container.addEventListener('mousedown', onMouseDown);
