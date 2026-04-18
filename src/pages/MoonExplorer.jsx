@@ -17,6 +17,7 @@ import { missions, events, objects, LAYER_TYPES } from '../components/moon/moonD
 import { marsMissions, marsEvents, marsObjects } from '../components/moon/marsData';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFeatureFlag } from '@/components/FeatureFlagProvider';
+import SpaceAudioPlayer from '../components/moon/SpaceAudioPlayer';
 
 export default function MoonExplorer() {
   const navigate = useNavigate();
@@ -376,6 +377,9 @@ export default function MoonExplorer() {
               onJumpToDate={handleJumpToDate}
             />
           )}
+
+          {/* Space Audio Player */}
+          <SpaceAudioPlayer />
 
           {/* Stats bar */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-card/90 backdrop-blur-xl rounded-full border border-border shadow-xl z-[400]">
