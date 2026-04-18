@@ -119,6 +119,7 @@ export default function SolarSystem() {
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
   const clockRef = useRef(0);
+  const [zoomRadius, setZoomRadius] = useState(110);
 
   const handlePause = useCallback(() => {
     pausedRef.current = !pausedRef.current;
@@ -135,7 +136,7 @@ export default function SolarSystem() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x020408);
 
-    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 2000);
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 500000);
     camera.position.set(0, 55, 90);
     camera.lookAt(0, 0, 0);
 
@@ -145,21 +146,97 @@ export default function SolarSystem() {
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
 
-    // Stars
-    const starsGeo = new THREE.BufferGeometry();
-    const starPos = [];
-    for (let i = 0; i < 5000; i++) {
-      const r = 600 + Math.random() * 400;
+    // ── Near stars (visible at solar system scale) ──────────────────────────
+    const nearStarsGeo = new THREE.BufferGeometry();
+    const nearStarPos = [];
+    for (let i = 0; i < 6000; i++) {
+      const r = 400 + Math.random() * 600;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
-      starPos.push(
+      nearStarPos.push(
         r * Math.sin(phi) * Math.cos(theta),
         r * Math.sin(phi) * Math.sin(theta),
         r * Math.cos(phi)
       );
     }
-    starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
-    scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, transparent: true, opacity: 0.8 })));
+    nearStarsGeo.setAttribute('position', new THREE.Float32BufferAttribute(nearStarPos, 3));
+    scene.add(new THREE.Points(nearStarsGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, transparent: true, opacity: 0.85 })));
+
+    // ── Milky Way disc (visible when zoomed out ~1000+ units) ───────────────
+    const mwGroup = new THREE.Group();
+    // Disc of stars forming galactic plane
+    const mwGeo = new THREE.BufferGeometry();
+    const mwPos = [], mwColors = [];
+    for (let i = 0; i < 30000; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      // Exponential disc density - denser toward center
+      const r = Math.pow(Math.random(), 0.4) * 18000;
+      const thickness = 600 * Math.exp(-r / 8000);
+      const y = (Math.random() - 0.5) * thickness;
+      const spiral = angle + r * 0.0003; // slight spiral arm twist
+      const x = Math.cos(spiral) * r;
+      const z = Math.sin(spiral) * r;
+      mwPos.push(x, y, z);
+      // Color variation: blue-white in arms, orange-red in core
+      const coreInfluence = Math.max(0, 1 - r / 4000);
+      mwColors.push(
+        0.7 + coreInfluence * 0.3,
+        0.75 + coreInfluence * 0.1,
+        0.9 - coreInfluence * 0.5
+      );
+    }
+    mwGeo.setAttribute('position', new THREE.Float32BufferAttribute(mwPos, 3));
+    mwGeo.setAttribute('color', new THREE.Float32BufferAttribute(mwColors, 3));
+    const mwMat = new THREE.PointsMaterial({ size: 12, vertexColors: true, transparent: true, opacity: 0.6, sizeAttenuation: true });
+    mwGroup.add(new THREE.Points(mwGeo, mwMat));
+    // Bright galactic core blob
+    const coreGeo = new THREE.SphereGeometry(1800, 32, 32);
+    const coreMat = new THREE.ShaderMaterial({
+      vertexShader: `varying vec3 vNormal; void main(){ vNormal=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      fragmentShader: `varying vec3 vNormal; void main(){ float i=pow(max(0.0,0.6-dot(vNormal,vec3(0,0,1))),2.0); gl_FragColor=vec4(1.0,0.85,0.5,1.0)*i*0.4; }`,
+      side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true,
+    });
+    mwGroup.add(new THREE.Mesh(coreGeo, coreMat));
+    // Tilt Milky Way ~60° like we see it from Earth's perspective
+    mwGroup.rotation.x = Math.PI * 0.33;
+    mwGroup.rotation.z = Math.PI * 0.15;
+    // Position our solar system slightly off galactic center (~26k light-years in scene units ~6500)
+    mwGroup.position.set(6500, 0, 0);
+    scene.add(mwGroup);
+
+    // ── Neighboring galaxies (visible at extreme zoom out ~50k+ units) ───────
+    const galaxyDefs = [
+      { name: 'Andromeda', pos: [120000, 20000, -80000], color: [0.85, 0.88, 1.0], size: 8000 },
+      { name: 'LMC',       pos: [-30000, -18000, 60000], color: [0.9, 0.85, 0.75], size: 2500 },
+      { name: 'SMC',       pos: [-20000, -22000, 70000], color: [0.8, 0.82, 0.9],  size: 1500 },
+      { name: 'Triangulum',pos: [140000, 10000, 30000],  color: [0.7, 0.8, 1.0],   size: 3000 },
+    ];
+    galaxyDefs.forEach(g => {
+      const gGeo = new THREE.BufferGeometry();
+      const gPos = [], gCols = [];
+      for (let i = 0; i < 5000; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.pow(Math.random(), 0.5) * g.size;
+        const yy = (Math.random() - 0.5) * g.size * 0.12;
+        gPos.push(g.pos[0] + Math.cos(a)*r, g.pos[1]+yy, g.pos[2]+Math.sin(a)*r);
+        gCols.push(g.color[0], g.color[1], g.color[2]);
+      }
+      gGeo.setAttribute('position', new THREE.Float32BufferAttribute(gPos, 3));
+      gGeo.setAttribute('color', new THREE.Float32BufferAttribute(gCols, 3));
+      scene.add(new THREE.Points(gGeo, new THREE.PointsMaterial({ size: 60, vertexColors: true, transparent: true, opacity: 0.5, sizeAttenuation: true })));
+    });
+
+    // ── Deep background stars (always visible) ──────────────────────────────
+    const deepGeo = new THREE.BufferGeometry();
+    const deepPos = [];
+    for (let i = 0; i < 8000; i++) {
+      const r = 200000 + Math.random() * 100000;
+      const t = Math.random() * Math.PI * 2;
+      const p2 = Math.acos(2 * Math.random() - 1);
+      deepPos.push(r*Math.sin(p2)*Math.cos(t), r*Math.sin(p2)*Math.sin(t), r*Math.cos(p2));
+    }
+    deepGeo.setAttribute('position', new THREE.Float32BufferAttribute(deepPos, 3));
+    scene.add(new THREE.Points(deepGeo, new THREE.PointsMaterial({ color: 0xaabbff, size: 80, transparent: true, opacity: 0.4, sizeAttenuation: true })));
 
     // Sun light — much brighter so planets are clearly lit
     const sunLight = new THREE.PointLight(0xFFF4E0, 8, 1200);
@@ -274,6 +351,7 @@ export default function SolarSystem() {
         radius * Math.sin(phi) * Math.cos(theta)
       );
       camera.lookAt(0, 0, 0);
+      setZoomRadius(radius);
     };
     updateCamera();
 
@@ -289,7 +367,9 @@ export default function SolarSystem() {
     };
     const onMouseUp = () => { isDragging = false; };
     const onWheel = (e) => {
-      radius = Math.max(30, Math.min(250, radius + e.deltaY * 0.08));
+      // Dynamic scroll speed: faster when zoomed far out
+      const speed = radius < 300 ? 0.08 : radius < 5000 ? 0.3 : radius < 50000 ? 2 : 20;
+      radius = Math.max(15, radius + e.deltaY * speed);
       updateCamera();
     };
 
@@ -308,7 +388,7 @@ export default function SolarSystem() {
       if (e.touches.length === 2 && pinchDist0) {
         e.preventDefault();
         const d = getTouchDist(e.touches);
-        radius = Math.max(30, Math.min(250, pinchRadius0 * (pinchDist0 / d)));
+        radius = Math.max(15, pinchRadius0 * (pinchDist0 / d));
         updateCamera();
       } else if (touchPrev) {
         const dx = e.touches[0].clientX - touchPrev.x, dy = e.touches[0].clientY - touchPrev.y;
@@ -369,6 +449,10 @@ export default function SolarSystem() {
     let animId;
     const animate = () => {
       animId = requestAnimationFrame(animate);
+      // Fade in Milky Way stars as camera pulls back
+      const mwVisibility = Math.min(1, Math.max(0, (radius - 800) / 3000));
+      mwMat.opacity = mwVisibility * 0.6;
+
       if (!pausedRef.current) {
         clockRef.current += 0.008;
         planetMeshes.forEach((mesh) => {
@@ -467,6 +551,19 @@ export default function SolarSystem() {
         {/* Controls hint */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-white/30 font-body text-center">
           Drag to orbit • Scroll/pinch to zoom • Click a planet
+        </div>
+
+        {/* Cosmic scale indicator */}
+        <div className="absolute top-4 left-4 flex flex-col gap-1">
+          <div className="px-3 py-1.5 rounded-xl text-[11px] font-body font-medium border border-white/10 text-white/60" style={{ background: 'rgba(8,12,24,0.85)', backdropFilter: 'blur(8px)' }}>
+            {zoomRadius < 150 ? '🌍 Planet scale' :
+             zoomRadius < 500 ? '☀️ Solar System' :
+             zoomRadius < 5000 ? '⭐ Inner Heliosphere' :
+             zoomRadius < 20000 ? '🌌 Galactic Neighbourhood' :
+             zoomRadius < 80000 ? '🌌 Milky Way' :
+             zoomRadius < 200000 ? '🔭 Local Group' :
+             '✨ Deep Space'}
+          </div>
         </div>
 
         {/* Planet list chips */}
