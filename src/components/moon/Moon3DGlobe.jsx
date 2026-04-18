@@ -7,6 +7,7 @@ import GlobeCompass from './GlobeCompass';
 import SunAngleDisplay from './SunAngleDisplay';
 import GuidedTour from './GuidedTour';
 import { base44 } from '@/api/base44Client';
+import { useAppSettings } from '@/components/AppSettingsProvider';
 
 // In-memory cache (survives re-renders in same session)
 const memoryCache = {};

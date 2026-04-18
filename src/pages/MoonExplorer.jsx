@@ -17,11 +17,13 @@ import { missions, events, objects, LAYER_TYPES } from '../components/moon/moonD
 import { marsMissions, marsEvents, marsObjects } from '../components/moon/marsData';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFeatureFlag } from '@/components/FeatureFlagProvider';
+import { useAppSettings } from '@/components/AppSettingsProvider';
 import SpaceAudioPlayer from '../components/moon/SpaceAudioPlayer';
 
 export default function MoonExplorer() {
   const navigate = useNavigate();
   const { isEnabled } = useFeatureFlag();
+  const { isHidden } = useAppSettings();
   const [planet, setPlanet] = useState('moon'); // 'moon' | 'mars'
   const [viewMode, setViewMode] = useState('3d');
   const [arOpen, setArOpen] = useState(false);
@@ -159,7 +161,7 @@ export default function MoonExplorer() {
 
           <div className="flex items-center gap-4">
             {/* Planet Selector */}
-            <div className="flex items-center gap-1 bg-secondary rounded-xl p-1 border border-border">
+            {!isHidden('hide_planet_selector') && <div className="flex items-center gap-1 bg-secondary rounded-xl p-1 border border-border">
               {[
                 { key: 'moon', emoji: '🌕', label: 'Moon' },
                 { key: 'mars', emoji: '🔴', label: 'Mars' },
@@ -184,10 +186,10 @@ export default function MoonExplorer() {
                   <span className="hidden sm:inline">{label}</span>
                 </button>
               ))}
-            </div>
+            </div>}
 
             {/* Moon Cycle button — moon only */}
-            {planet === 'moon' && isEnabled('moon_cycle') && (
+            {planet === 'moon' && isEnabled('moon_cycle') && !isHidden('hide_moon_cycle_button') && (
               <button
                 onClick={() => setMoonCycleOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
@@ -199,7 +201,7 @@ export default function MoonExplorer() {
             )}
 
             {/* Measure button */}
-            {isEnabled('measurements') && (
+            {isEnabled('measurements') && !isHidden('hide_measure_button') && (
               <button
                 onClick={() => { setMeasureActive(a => !a); handleMeasureClear(); }}
                 title="Measurement Tool"
@@ -215,7 +217,7 @@ export default function MoonExplorer() {
             )}
 
             {/* AR View button — moon only */}
-            {planet === 'moon' && isEnabled('ar_view') && (
+            {planet === 'moon' && isEnabled('ar_view') && !isHidden('hide_ar_button') && (
               <button
                 onClick={() => setArOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border border-primary/40 text-primary hover:bg-primary/10 transition-all"
@@ -226,25 +228,31 @@ export default function MoonExplorer() {
               </button>
             )}
 
-            <button
-              onClick={() => navigate('/solar-system')}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
-            >
-              ☀️ <span>Solar System</span>
-            </button>
-            <div className="hidden md:block">
-              <LayerControls activeLayers={activeLayers} onToggleLayer={toggleLayer} />
-            </div>
-            <Tabs value={viewMode} onValueChange={handleTabChange}>
-              <TabsList className="bg-secondary">
-                <TabsTrigger value="3d" className="gap-1.5 text-xs">
-                  <Globe className="w-3.5 h-3.5" /> 3D Globe
-                </TabsTrigger>
-                <TabsTrigger value="2d" className="gap-1.5 text-xs">
-                  <Map className="w-3.5 h-3.5" /> 2D Map
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {!isHidden('hide_solar_system_link') && (
+              <button
+                onClick={() => navigate('/solar-system')}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
+              >
+                ☀️ <span>Solar System</span>
+              </button>
+            )}
+            {!isHidden('hide_layer_controls') && (
+              <div className="hidden md:block">
+                <LayerControls activeLayers={activeLayers} onToggleLayer={toggleLayer} />
+              </div>
+            )}
+            {!isHidden('hide_view_toggle') && (
+              <Tabs value={viewMode} onValueChange={handleTabChange}>
+                <TabsList className="bg-secondary">
+                  <TabsTrigger value="3d" className="gap-1.5 text-xs">
+                    <Globe className="w-3.5 h-3.5" /> 3D Globe
+                  </TabsTrigger>
+                  <TabsTrigger value="2d" className="gap-1.5 text-xs">
+                    <Map className="w-3.5 h-3.5" /> 2D Map
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
           </div>
         </div>
 
@@ -253,7 +261,7 @@ export default function MoonExplorer() {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Retractable Sidebar */}
-        <aside className={`hidden lg:flex flex-col border-r border-border bg-card/30 flex-shrink-0 overflow-hidden transition-all duration-300 ${uiHidden ? '!hidden' : ''} ${sidebarOpen ? 'w-72' : 'w-0'}`}>
+        <aside className={`hidden lg:flex flex-col border-r border-border bg-card/30 flex-shrink-0 overflow-hidden transition-all duration-300 ${uiHidden || isHidden('hide_sidebar') ? '!hidden' : ''} ${sidebarOpen ? 'w-72' : 'w-0'}`}>
           <Sidebar
             markers={displayedMarkers}
             selectedMarker={selectedMarker}
@@ -304,10 +312,12 @@ export default function MoonExplorer() {
                   onMeasurePoint={handleMeasurePoint}
                 />
                 {/* Time slider */}
-                <TimeSlider
-                  allMarkers={layerFilteredMarkers}
-                  onFilteredMarkersChange={handleTimeFilter}
-                />
+                {!isHidden('hide_time_slider') && (
+                  <TimeSlider
+                    allMarkers={layerFilteredMarkers}
+                    onFilteredMarkersChange={handleTimeFilter}
+                  />
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -369,7 +379,7 @@ export default function MoonExplorer() {
           </button>
 
           {/* Info panel */}
-          {!uiHidden && <InfoPanel marker={selectedMarker} onClose={() => setSelectedMarker(null)} />}
+          {!uiHidden && !isHidden('hide_info_panel') && <InfoPanel marker={selectedMarker} onClose={() => setSelectedMarker(null)} />}
 
           {/* Measurement result card */}
           {!uiHidden && measureActive && isEnabled('measurements') && (
@@ -407,10 +417,10 @@ export default function MoonExplorer() {
           )}
 
           {/* Space Audio Player */}
-          {!uiHidden && <SpaceAudioPlayer />}
+          {!uiHidden && !isHidden('hide_audio_player') && <SpaceAudioPlayer />}
 
           {/* Stats bar */}
-          {!uiHidden && (
+          {!uiHidden && !isHidden('hide_stats_bar') && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-card/90 backdrop-blur-xl rounded-full border border-border shadow-xl z-[400]">
               <span className="text-[11px] text-muted-foreground font-body">
                 Showing <span className="text-foreground font-medium">{displayedMarkers.length}</span> locations

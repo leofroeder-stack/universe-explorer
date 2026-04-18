@@ -6,6 +6,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { FeatureFlagProvider } from '@/components/FeatureFlagProvider';
+import { AppSettingsProvider } from '@/components/AppSettingsProvider';
 import MoonExplorer from './pages/MoonExplorer';
 import SolarSystem from './pages/SolarSystem';
 import PlanetExplorer from './pages/PlanetExplorer';
@@ -54,9 +55,11 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <FeatureFlagProvider>
-          <Router>
-            <AuthenticatedApp />
-          </Router>
+        <AppSettingsProvider>
+        <Router>
+          <AuthenticatedApp />
+        </Router>
+        </AppSettingsProvider>
         </FeatureFlagProvider>
         <Toaster />
       </QueryClientProvider>

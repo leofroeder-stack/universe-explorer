@@ -1,0 +1,30 @@
+{
+  "name": "AppSettings",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Unique setting key (e.g. 'hide_solar_system_link')"
+    },
+    "value": {
+      "type": "string",
+      "description": "Setting value (e.g. 'true', 'false', or any string)"
+    },
+    "category": {
+      "type": "string",
+      "description": "Category grouping (e.g. 'navigation', 'features', 'ui')"
+    },
+    "label": {
+      "type": "string",
+      "description": "Human-readable label for this setting"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description"
+    }
+  },
+  "required": [
+    "key",
+    "value"
+  ]
+}
