@@ -4,6 +4,7 @@ import { LAYER_COLORS } from './moonData';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImagePreviewModal from './ImagePreviewModal.jsx';
 import YoutubeModal from './YoutubeModal';
+import PinnedYoutubePlayer from './PinnedYoutubePlayer';
 
 const NASA_URLS = {
   missions: 'https://www.nasa.gov/missions/',
@@ -14,14 +15,30 @@ const NASA_URLS = {
 export default function InfoPanel({ marker, onClose }) {
   const [imageOpen, setImageOpen] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
+  const [pinnedVideo, setPinnedVideo] = useState(null); // { url, title }
 
-  if (!marker) return null;
+  if (!marker) return (
+    <>
+      {/* Keep pinned player alive even when no marker selected */}
+      {pinnedVideo && (
+        <PinnedYoutubePlayer
+          url={pinnedVideo.url}
+          title={pinnedVideo.title}
+          onClose={() => setPinnedVideo(null)}
+        />
+      )}
+    </>
+  );
 
   const color = LAYER_COLORS[marker.type];
   const typeLabel = marker.type.charAt(0).toUpperCase() + marker.type.slice(1, -1);
   const nasaUrl = NASA_URLS[marker.type];
   const hasImages = marker.images && marker.images.length > 0;
   const hasYoutube = !!marker.youtubeUrl;
+
+  const handlePin = () => {
+    setPinnedVideo({ url: marker.youtubeUrl, title: marker.name });
+  };
 
   return (
     <>
@@ -152,7 +169,17 @@ export default function InfoPanel({ marker, onClose }) {
         title={marker.name}
         isOpen={videoOpen}
         onClose={() => setVideoOpen(false)}
+        onPin={hasYoutube ? handlePin : undefined}
       />
+
+      {/* Pinned side player — persists while browsing */}
+      {pinnedVideo && (
+        <PinnedYoutubePlayer
+          url={pinnedVideo.url}
+          title={pinnedVideo.title}
+          onClose={() => setPinnedVideo(null)}
+        />
+      )}
     </>
   );
 }

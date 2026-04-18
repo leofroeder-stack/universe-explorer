@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ExternalLink, Youtube } from 'lucide-react';
+import { X, ExternalLink, Youtube, PanelRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function getVideoId(url) {
@@ -7,7 +7,7 @@ function getVideoId(url) {
   return match ? match[1] : null;
 }
 
-export default function YoutubeModal({ url, title, isOpen, onClose }) {
+export default function YoutubeModal({ url, title, isOpen, onClose, onPin }) {
   const [embedFailed, setEmbedFailed] = useState(false);
   const videoId = getVideoId(url);
   const embedUrl = videoId
@@ -16,9 +16,14 @@ export default function YoutubeModal({ url, title, isOpen, onClose }) {
   const directUrl = `https://www.youtube.com/watch?v=${videoId}`;
   const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null;
 
-  // Reset state when modal closes/opens
   const handleClose = () => {
     setEmbedFailed(false);
+    onClose();
+  };
+
+  const handlePin = () => {
+    setEmbedFailed(false);
+    onPin?.();
     onClose();
   };
 
@@ -48,6 +53,17 @@ export default function YoutubeModal({ url, title, isOpen, onClose }) {
                 <span className="text-sm font-body font-semibold text-white truncate">{title}</span>
               </div>
               <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                {/* Pin to side panel button */}
+                {onPin && (
+                  <button
+                    onClick={handlePin}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 transition-colors text-xs font-body"
+                    title="Pin player to side panel"
+                  >
+                    <PanelRight className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Pin to side</span>
+                  </button>
+                )}
                 <a
                   href={directUrl}
                   target="_blank"
@@ -79,10 +95,8 @@ export default function YoutubeModal({ url, title, isOpen, onClose }) {
                   allowFullScreen
                   onError={() => setEmbedFailed(true)}
                 />
-                {/* Overlay to detect embed block via postMessage isn't perfect, so we provide fallback button */}
               </div>
             ) : (
-              /* Fallback: thumbnail + open on YouTube */
               <div className="relative w-full bg-zinc-900 flex flex-col items-center justify-center gap-4 py-12">
                 {thumbnailUrl && (
                   <img src={thumbnailUrl} alt={title} className="w-48 rounded-xl opacity-60" />
@@ -105,7 +119,7 @@ export default function YoutubeModal({ url, title, isOpen, onClose }) {
             {/* Attribution */}
             <div className="px-4 py-2 bg-zinc-900/80 border-t border-white/5">
               <p className="text-[10px] text-white/30 font-body">
-                Video content courtesy of YouTube / original rights holders. Luna Atlas does not host any video content.
+                Video content courtesy of YouTube / original rights holders. Universe Explorer does not host any video content.
               </p>
             </div>
           </motion.div>
