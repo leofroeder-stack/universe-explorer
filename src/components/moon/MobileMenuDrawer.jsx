@@ -50,7 +50,8 @@ export default function MobileMenuDrawer({
             {/* Drawer */}
             <motion.div
               key="drawer"
-              className="fixed left-0 top-0 bottom-0 w-80 bg-card border-r border-border z-[700] flex flex-col lg:hidden"
+              className="fixed left-0 top-0 w-[85vw] max-w-sm bg-card border-r border-border z-[700] flex flex-col lg:hidden"
+              style={{ height: '100dvh' }}
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
@@ -67,7 +68,7 @@ export default function MobileMenuDrawer({
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {/* Planet Selector */}
                 {!isHidden('hide_planet_selector') && (
                   <div className="px-4 py-3 border-b border-border">
