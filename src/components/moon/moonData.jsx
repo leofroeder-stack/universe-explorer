@@ -21,7 +21,7 @@ export const missions = [
     description: 'First crewed Moon landing. Neil Armstrong and Buzz Aldrin became the first humans to walk on the Moon.',
     crew: 'Neil Armstrong, Buzz Aldrin, Michael Collins',
     country: 'USA',
-    youtubeUrl: 'https://www.youtube.com/watch?v=hZI85ZQANIM',
+    youtubeUrl: 'https://www.youtube.com/watch?v=iR3oXFFISI0',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Aldrin_Apollo_11_original.jpg/800px-Aldrin_Apollo_11_original.jpg',
       'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Apollo_11_insignia.png/800px-Apollo_11_insignia.png',
@@ -38,7 +38,7 @@ export const missions = [
     description: 'Second crewed Moon landing. Landed near Surveyor 3 probe in the Ocean of Storms.',
     crew: 'Pete Conrad, Alan Bean, Richard Gordon',
     country: 'USA',
-    youtubeUrl: 'https://www.youtube.com/watch?v=GkjrFQxGPAY',
+    youtubeUrl: 'https://www.youtube.com/watch?v=K24yUv1I78Q',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Alan_Bean_Apollo_12.jpg/800px-Alan_Bean_Apollo_12.jpg',
       'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Apollo12insignia.png/800px-Apollo12insignia.png',
@@ -54,7 +54,7 @@ export const missions = [
     description: 'Third crewed Moon landing. Alan Shepard famously hit golf balls on the lunar surface.',
     crew: 'Alan Shepard, Edgar Mitchell, Stuart Roosa',
     country: 'USA',
-    youtubeUrl: 'https://www.youtube.com/watch?v=M0YxgJLQcFA',
+    youtubeUrl: 'https://www.youtube.com/watch?v=DkAhdV45jiY',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Edgar_Mitchell_Apollo_14.jpg/800px-Edgar_Mitchell_Apollo_14.jpg',
       'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Apollo14insignia.png/800px-Apollo14insignia.png',
@@ -70,7 +70,7 @@ export const missions = [
     description: 'First mission to use the Lunar Roving Vehicle. Explored Hadley Rille and the Apennine Mountains.',
     crew: 'David Scott, James Irwin, Alfred Worden',
     country: 'USA',
-    youtubeUrl: 'https://www.youtube.com/watch?v=SbS68cFsOIU',
+    youtubeUrl: 'https://www.youtube.com/watch?v=PuRF07ZLdyk',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Apollo_15_flag,_rover,_LM,_Irwin.jpg/800px-Apollo_15_flag,_rover,_LM,_Irwin.jpg',
       'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Apollo15insignia.png/800px-Apollo15insignia.png',
@@ -86,7 +86,7 @@ export const missions = [
     description: 'Only mission to land in the lunar highlands. Collected 95.8 kg of lunar samples.',
     crew: 'John Young, Charles Duke, Ken Mattingly',
     country: 'USA',
-    youtubeUrl: 'https://www.youtube.com/watch?v=tB9st6pMv8g',
+    youtubeUrl: 'https://www.youtube.com/watch?v=pCrh8b4yiKo',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/John_Young_on_the_Moon.jpg/800px-John_Young_on_the_Moon.jpg',
       'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Apollo16insignia.png/800px-Apollo16insignia.png',
@@ -102,7 +102,7 @@ export const missions = [
     description: 'Last crewed Moon mission. Harrison Schmitt was the only geologist to walk on the Moon.',
     crew: 'Eugene Cernan, Harrison Schmitt, Ronald Evans',
     country: 'USA',
-    youtubeUrl: 'https://www.youtube.com/watch?v=_ZZGM2dU7ns',
+    youtubeUrl: 'https://www.youtube.com/watch?v=4DCyayAZbog',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Harrison_Schmitt_and_American_Flag_-_GPN-2000-001137.jpg/800px-Harrison_Schmitt_and_American_Flag_-_GPN-2000-001137.jpg',
       'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Apollo_17_insignia.png/800px-Apollo_17_insignia.png',
@@ -118,7 +118,7 @@ export const missions = [
     description: 'First spacecraft to achieve a soft landing on the Moon and transmit photos from the surface.',
     crew: 'Uncrewed',
     country: 'USSR',
-    youtubeUrl: 'https://www.youtube.com/watch?v=G1sJdEMnXHE',
+    youtubeUrl: 'https://www.youtube.com/watch?v=1ZqYuVSWW8E',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Luna_9_lander.jpg/800px-Luna_9_lander.jpg',
     ],
@@ -133,7 +133,7 @@ export const missions = [
     description: 'First robotic sample return mission. Returned 101 grams of lunar soil to Earth.',
     crew: 'Uncrewed',
     country: 'USSR',
-    youtubeUrl: 'https://www.youtube.com/watch?v=H5M_fJeKxMY',
+    youtubeUrl: 'https://www.youtube.com/watch?v=pDdWbrwsFTM',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Luna_16_1.jpg/800px-Luna_16_1.jpg',
     ],
@@ -148,7 +148,7 @@ export const missions = [
     description: 'First spacecraft to land on the far side of the Moon, in Von Kármán crater.',
     crew: 'Uncrewed',
     country: 'China',
-    youtubeUrl: 'https://www.youtube.com/watch?v=HRSbEFhmPg8',
+    youtubeUrl: 'https://www.youtube.com/watch?v=JJi_YEubKCY',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Chang%27e_4_after_landing_-_Yutu_2.jpg/800px-Chang%27e_4_after_landing_-_Yutu_2.jpg',
     ],
@@ -163,7 +163,7 @@ export const missions = [
     description: 'India\'s successful lunar landing near the south pole, making India the 4th country to soft-land on the Moon.',
     crew: 'Uncrewed',
     country: 'India',
-    youtubeUrl: 'https://www.youtube.com/watch?v=UN5C2O_DIEU',
+    youtubeUrl: 'https://www.youtube.com/watch?v=DLA_64yz8Ss',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Chandrayaan-3_Pragyan_Rover.jpg/800px-Chandrayaan-3_Pragyan_Rover.jpg',
     ],
@@ -179,7 +179,7 @@ export const events = [
     type: LAYER_TYPES.EVENTS,
     date: '~4.5 billion years ago',
     description: 'The Moon is theorized to have formed from debris after a Mars-sized body (Theia) collided with early Earth.',
-    youtubeUrl: 'https://www.youtube.com/watch?v=R7MBIzBitkA',
+    youtubeUrl: 'https://www.youtube.com/watch?v=kRlhlCWplqk',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Artist%27s_concept_of_collision_at_HD_172555.jpg/800px-Artist%27s_concept_of_collision_at_HD_172555.jpg',
     ],
@@ -192,7 +192,7 @@ export const events = [
     type: LAYER_TYPES.EVENTS,
     date: '~4.1–3.8 billion years ago',
     description: 'A period of intense asteroid impacts that created many of the Moon\'s largest craters and basins.',
-    youtubeUrl: 'https://www.youtube.com/watch?v=1lDO9iRvMwk',
+    youtubeUrl: 'https://www.youtube.com/watch?v=CvjoIVZdAT4',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Moon_nearside_LRO_color_mosaic.jpg/800px-Moon_nearside_LRO_color_mosaic.jpg',
     ],
@@ -205,7 +205,7 @@ export const events = [
     type: LAYER_TYPES.EVENTS,
     date: '~3.85 billion years ago',
     description: 'Massive impact that created Mare Imbrium, one of the largest impact basins in the solar system.',
-    youtubeUrl: 'https://www.youtube.com/watch?v=4rcTwv_BCHM',
+    youtubeUrl: 'https://www.youtube.com/watch?v=N2gvlgaxeak',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Mare_Imbrium_AS17-M-1518.jpg/800px-Mare_Imbrium_AS17-M-1518.jpg',
     ],
@@ -218,7 +218,7 @@ export const events = [
     type: LAYER_TYPES.EVENTS,
     date: '~3.5–3.0 billion years ago',
     description: 'Volcanic eruptions filled large impact basins with basaltic lava, creating the dark maria we see today.',
-    youtubeUrl: 'https://www.youtube.com/watch?v=E1T5eCnqRZA',
+    youtubeUrl: 'https://www.youtube.com/watch?v=CvjoIVZdAT4',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Lunar_mare_basalt_15016.jpg/800px-Lunar_mare_basalt_15016.jpg',
     ],
@@ -231,7 +231,7 @@ export const events = [
     type: LAYER_TYPES.EVENTS,
     date: '~108 million years ago',
     description: 'One of the most recent large impacts, creating the prominent Tycho crater with its bright ray system.',
-    youtubeUrl: 'https://www.youtube.com/watch?v=BWKZ1IfNbsI',
+    youtubeUrl: 'https://www.youtube.com/watch?v=N2gvlgaxeak',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Tycho_crater_on_the_Moon.png/800px-Tycho_crater_on_the_Moon.png',
     ],
@@ -244,7 +244,7 @@ export const events = [
     type: LAYER_TYPES.EVENTS,
     date: 'Observed since 1500s',
     description: 'Short-lived light emissions, color changes, and obscurations observed on the lunar surface. Possibly caused by outgassing.',
-    youtubeUrl: 'https://www.youtube.com/watch?v=JW0zOgbCfbI',
+    youtubeUrl: 'https://www.youtube.com/watch?v=CvjoIVZdAT4',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Full_Moon_Luc_Viatour.jpg/800px-Full_Moon_Luc_Viatour.jpg',
     ],
@@ -260,7 +260,7 @@ export const objects = [
     type: LAYER_TYPES.OBJECTS,
     description: 'Prominent 93 km wide impact crater visible from Earth. Known for its terraced walls and central peaks.',
     diameter: '93 km',
-    youtubeUrl: 'https://www.youtube.com/watch?v=7s4e8jAECpw',
+    youtubeUrl: 'https://www.youtube.com/watch?v=N2gvlgaxeak',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Copernicus_crater_4172_h1.jpg/800px-Copernicus_crater_4172_h1.jpg',
     ],
@@ -273,7 +273,7 @@ export const objects = [
     type: LAYER_TYPES.OBJECTS,
     description: 'Prominent crater with a dramatic ray system extending over 1,500 km across the lunar surface.',
     diameter: '85 km',
-    youtubeUrl: 'https://www.youtube.com/watch?v=BWKZ1IfNbsI',
+    youtubeUrl: 'https://www.youtube.com/watch?v=N2gvlgaxeak',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Tycho_crater_on_the_Moon.png/800px-Tycho_crater_on_the_Moon.png',
     ],
@@ -286,7 +286,7 @@ export const objects = [
     type: LAYER_TYPES.OBJECTS,
     description: 'The "Sea of Tranquility" — a large dark basaltic plain. Site of the Apollo 11 landing.',
     diameter: '873 km',
-    youtubeUrl: 'https://www.youtube.com/watch?v=hZI85ZQANIM',
+    youtubeUrl: 'https://www.youtube.com/watch?v=iR3oXFFISI0',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Mare_Tranquillitatis_-_ASU.jpg/800px-Mare_Tranquillitatis_-_ASU.jpg',
     ],
@@ -299,7 +299,7 @@ export const objects = [
     type: LAYER_TYPES.OBJECTS,
     description: 'The largest of the lunar maria, covering about 2,500 km. "Ocean of Storms".',
     diameter: '~2,500 km',
-    youtubeUrl: 'https://www.youtube.com/watch?v=9lW0N-XVGio',
+    youtubeUrl: 'https://www.youtube.com/watch?v=CvjoIVZdAT4',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Oceanus_Procellarum_%28%22Ocean_of_Storms%22%29.jpg/800px-Oceanus_Procellarum_%28%22Ocean_of_Storms%22%29.jpg',
     ],
@@ -312,7 +312,7 @@ export const objects = [
     type: LAYER_TYPES.OBJECTS,
     description: 'Second largest mare on the Moon. "Sea of Showers" — formed by a massive ancient impact.',
     diameter: '1,145 km',
-    youtubeUrl: 'https://www.youtube.com/watch?v=4rcTwv_BCHM',
+    youtubeUrl: 'https://www.youtube.com/watch?v=N2gvlgaxeak',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Mare_Imbrium_AS17-M-1518.jpg/800px-Mare_Imbrium_AS17-M-1518.jpg',
     ],
@@ -325,7 +325,7 @@ export const objects = [
     type: LAYER_TYPES.OBJECTS,
     description: 'The brightest large formation on the Moon. Young crater with high albedo.',
     diameter: '40 km',
-    youtubeUrl: 'https://www.youtube.com/watch?v=9lW0N-XVGio',
+    youtubeUrl: 'https://www.youtube.com/watch?v=CvjoIVZdAT4',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Aristarchus_crater.jpg/800px-Aristarchus_crater.jpg',
     ],
@@ -338,7 +338,7 @@ export const objects = [
     type: LAYER_TYPES.OBJECTS,
     description: 'The largest, deepest, and oldest recognized impact basin on the Moon (and one of the largest in the solar system).',
     diameter: '~2,500 km',
-    youtubeUrl: 'https://www.youtube.com/watch?v=BWKZ1IfNbsI',
+    youtubeUrl: 'https://www.youtube.com/watch?v=CvjoIVZdAT4',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Lunar_South_Pole_Aitken_basin.jpg/800px-Lunar_South_Pole_Aitken_basin.jpg',
     ],
@@ -351,7 +351,7 @@ export const objects = [
     type: LAYER_TYPES.OBJECTS,
     description: 'Crater at the lunar south pole. Its permanently shadowed interior may contain water ice deposits.',
     diameter: '21 km',
-    youtubeUrl: 'https://www.youtube.com/watch?v=EiREFxGkRWA',
+    youtubeUrl: 'https://www.youtube.com/watch?v=CvjoIVZdAT4',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Shackleton_crater_LROC.jpg/800px-Shackleton_crater_LROC.jpg',
     ],
@@ -364,7 +364,7 @@ export const objects = [
     type: LAYER_TYPES.OBJECTS,
     description: 'Mountain range forming the southeastern border of Mare Imbrium. Peaks rise up to 5 km above the mare.',
     diameter: '~600 km length',
-    youtubeUrl: 'https://www.youtube.com/watch?v=SbS68cFsOIU',
+    youtubeUrl: 'https://www.youtube.com/watch?v=PuRF07ZLdyk',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Apollo_15_flag,_rover,_LM,_Irwin.jpg/800px-Apollo_15_flag,_rover,_LM,_Irwin.jpg',
     ],
@@ -377,7 +377,7 @@ export const objects = [
     type: LAYER_TYPES.OBJECTS,
     description: 'A sinuous rille (lava channel) near the Apollo 15 landing site, about 120 km long and 1.5 km wide.',
     diameter: '120 km length',
-    youtubeUrl: 'https://www.youtube.com/watch?v=SbS68cFsOIU',
+    youtubeUrl: 'https://www.youtube.com/watch?v=PuRF07ZLdyk',
     images: [
       'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Hadley_Rille_from_Apollo_15.jpg/800px-Hadley_Rille_from_Apollo_15.jpg',
     ],

@@ -8,13 +8,41 @@ import SunAngleDisplay from './SunAngleDisplay';
 import GuidedTour from './GuidedTour';
 import { base44 } from '@/api/base44Client';
 
-const textureCache = {};
+// In-memory cache (survives re-renders in same session)
+const memoryCache = {};
+// In-flight deduplication: store promises to avoid parallel duplicate fetches
+const inFlightCache = {};
+
+const STORAGE_KEY_PREFIX = 'luna_tex_';
+
 async function fetchTextureDataUrl(url) {
-  if (textureCache[url]) return textureCache[url];
-  const res = await base44.functions.invoke('proxyTexture', { url });
-  const dataUrl = res.data?.dataUrl;
-  if (dataUrl) textureCache[url] = dataUrl;
-  return dataUrl;
+  // 1. Memory cache hit (fastest)
+  if (memoryCache[url]) return memoryCache[url];
+
+  // 2. SessionStorage cache hit (survives remounts)
+  try {
+    const stored = sessionStorage.getItem(STORAGE_KEY_PREFIX + url);
+    if (stored) {
+      memoryCache[url] = stored;
+      return stored;
+    }
+  } catch (_) {}
+
+  // 3. Deduplicate in-flight requests for the same URL
+  if (inFlightCache[url]) return inFlightCache[url];
+
+  inFlightCache[url] = (async () => {
+    const res = await base44.functions.invoke('proxyTexture', { url });
+    const dataUrl = res.data?.dataUrl;
+    if (dataUrl) {
+      memoryCache[url] = dataUrl;
+      try { sessionStorage.setItem(STORAGE_KEY_PREFIX + url, dataUrl); } catch (_) {}
+    }
+    delete inFlightCache[url];
+    return dataUrl;
+  })();
+
+  return inFlightCache[url];
 }
 
 const DEFAULT_CAMERA_Z = 3.2;
