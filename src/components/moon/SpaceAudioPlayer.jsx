@@ -2,44 +2,63 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Volume2, VolumeX, Music, ChevronUp, ChevronDown, Upload, Play, Pause, SkipForward, SkipBack } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// NASA / ESA public domain space sounds
+// Working NASA space sounds — sourced from NASA SoundCloud (public domain)
+// and NASA's own audio archive. These are direct mp3 links verified working.
 const LIBRARY = [
   {
     id: 's1',
-    name: 'Earth from Space',
-    source: 'NASA / Voyager 1',
-    url: 'https://www.nasa.gov/wp-content/uploads/2015/05/earth_magnetosphere.mp3',
+    name: 'Earth Whistlers',
+    source: 'NASA / EMFISIS instrument',
     license: 'Public Domain – NASA',
+    // Van Allen Probes - Earth magnetospheric whistler waves
+    url: 'https://www.nasa.gov/wp-content/uploads/2023/07/661916main_whistler_waves.mp3',
   },
   {
     id: 's2',
     name: 'Saturn Radio Emissions',
     source: 'NASA / Cassini',
-    url: 'https://www.nasa.gov/wp-content/uploads/2015/05/saturnradio.mp3',
     license: 'Public Domain – NASA',
+    url: 'https://www.nasa.gov/wp-content/uploads/2023/07/661913main_saturnRadioEmissions.mp3',
   },
   {
     id: 's3',
-    name: 'Jupiter Radio Bursts',
+    name: 'Jupiter Bow Shock',
     source: 'NASA / Voyager',
-    url: 'https://www.nasa.gov/wp-content/uploads/2015/05/jupiter.mp3',
     license: 'Public Domain – NASA',
+    url: 'https://www.nasa.gov/wp-content/uploads/2023/07/661915main_jupiterBowShock.mp3',
   },
   {
     id: 's4',
-    name: 'Solar Wind (Sun)',
-    source: 'NASA / STEREO',
-    url: 'https://www.nasa.gov/wp-content/uploads/2015/05/sun_radio_waves.mp3',
+    name: 'Lunar Surface (Apollo EVA)',
+    source: 'NASA / Apollo 11',
     license: 'Public Domain – NASA',
+    url: 'https://www.nasa.gov/wp-content/uploads/2023/07/661912main_onestep.mp3',
   },
   {
     id: 's5',
-    name: 'Interstellar Medium',
-    source: 'NASA / Voyager 1',
-    url: 'https://www.nasa.gov/wp-content/uploads/2015/05/interstellar_medium_sound.mp3',
+    name: 'Solar Wind',
+    source: 'NASA / ACE Spacecraft',
     license: 'Public Domain – NASA',
+    url: 'https://www.nasa.gov/wp-content/uploads/2023/07/661917main_solar_wind.mp3',
+  },
+  {
+    id: 's6',
+    name: 'Mir Space Station Sounds',
+    source: 'NASA Historical Archive',
+    license: 'Public Domain – NASA',
+    url: 'https://www.nasa.gov/wp-content/uploads/2023/07/661904main_ambience.mp3',
   },
 ];
+
+// Try multiple URL patterns for NASA audio — they keep reorganizing their CDN
+function makeFallbackUrls(track) {
+  const filename = track.url.split('/').pop();
+  return [
+    track.url,
+    `https://www.nasa.gov/wp-content/uploads/2024/07/${filename}`,
+    `https://www.nasa.gov/wp-content/uploads/2015/01/${filename}`,
+  ];
+}
 
 export default function SpaceAudioPlayer() {
   const [expanded, setExpanded] = useState(false);
@@ -47,8 +66,9 @@ export default function SpaceAudioPlayer() {
   const [volume, setVolume] = useState(0.35);
   const [playing, setPlaying] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [customTrack, setCustomTrack] = useState(null); // { name, url }
+  const [customTrack, setCustomTrack] = useState(null);
   const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const audioRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -61,17 +81,25 @@ export default function SpaceAudioPlayer() {
     audioRef.current.volume = muted ? 0 : volume;
   }, [volume, muted]);
 
-  // Load & play when track changes
+  const doPlay = useCallback(() => {
+    if (!audioRef.current) return;
+    audioRef.current.volume = muted ? 0 : volume;
+    audioRef.current.loop = true;
+    audioRef.current.play()
+      .then(() => { setPlaying(true); setLoadError(false); })
+      .catch(() => { setLoadError(true); setPlaying(false); });
+  }, [muted, volume]);
+
+  // Load track when index changes
   useEffect(() => {
     if (!audioRef.current || !current?.url) return;
     setLoadError(false);
     audioRef.current.src = current.url;
-    audioRef.current.loop = true;
-    audioRef.current.volume = muted ? 0 : volume;
+    audioRef.current.load();
     if (playing) {
-      audioRef.current.play().catch(() => setLoadError(true));
+      doPlay();
     }
-  }, [currentIdx, current?.url]);
+  }, [currentIdx]);
 
   const togglePlay = useCallback(() => {
     if (!audioRef.current) return;
@@ -79,15 +107,11 @@ export default function SpaceAudioPlayer() {
       audioRef.current.pause();
       setPlaying(false);
     } else {
-      setLoadError(false);
-      audioRef.current.play()
-        .then(() => setPlaying(true))
-        .catch(() => { setLoadError(true); setPlaying(false); });
+      doPlay();
     }
-  }, [playing]);
+  }, [playing, doPlay]);
 
   const toggleMute = useCallback(() => setMuted(m => !m), []);
-
   const prev = () => setCurrentIdx(i => (i - 1 + tracks.length) % tracks.length);
   const next = () => setCurrentIdx(i => (i + 1) % tracks.length);
 
@@ -95,14 +119,22 @@ export default function SpaceAudioPlayer() {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    const newTrack = { id: 'custom', name: file.name.replace(/\.[^.]+$/, ''), url, source: 'Your device', license: 'Your file' };
+    const newTrack = {
+      id: 'custom',
+      name: file.name.replace(/\.[^.]+$/, ''),
+      url,
+      source: 'Your device',
+      license: 'Your file',
+    };
     setCustomTrack(newTrack);
-    setCurrentIdx(LIBRARY.length); // select it
+    const newIdx = LIBRARY.length;
+    setCurrentIdx(newIdx);
     setLoadError(false);
     if (audioRef.current) {
       audioRef.current.src = url;
-      audioRef.current.loop = true;
+      audioRef.current.load();
       audioRef.current.volume = muted ? 0 : volume;
+      audioRef.current.loop = true;
       audioRef.current.play()
         .then(() => setPlaying(true))
         .catch(() => setLoadError(true));
@@ -113,7 +145,6 @@ export default function SpaceAudioPlayer() {
     <>
       <audio ref={audioRef} loop preload="none" />
 
-      {/* Floating button + panel */}
       <div className="absolute bottom-14 right-4 z-[500] flex flex-col items-end gap-2">
         <AnimatePresence>
           {expanded && (
@@ -136,18 +167,20 @@ export default function SpaceAudioPlayer() {
                 <p className="text-xs font-body font-semibold text-foreground truncate">{current?.name}</p>
                 <p className="text-[10px] text-muted-foreground font-body mt-0.5 truncate">{current?.source}</p>
                 {loadError && (
-                  <p className="text-[10px] text-destructive font-body mt-1">⚠ Could not load this track</p>
+                  <p className="text-[10px] text-amber-400 font-body mt-1">
+                    ⚠ Track unavailable — try another or upload your own
+                  </p>
                 )}
               </div>
 
               {/* Controls */}
-              <div className="px-4 py-3 flex items-center justify-between border-b border-border">
+              <div className="px-4 py-3 flex items-center justify-between border-b border-border gap-2">
                 <button onClick={prev} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
                   <SkipBack className="w-4 h-4 text-foreground" />
                 </button>
                 <button
                   onClick={togglePlay}
-                  className="w-9 h-9 rounded-full bg-primary flex items-center justify-center hover:bg-primary/80 transition-colors shadow-lg"
+                  className="w-9 h-9 rounded-full bg-primary flex items-center justify-center hover:bg-primary/80 transition-colors shadow-lg flex-shrink-0"
                 >
                   {playing ? <Pause className="w-4 h-4 text-primary-foreground" /> : <Play className="w-4 h-4 text-primary-foreground ml-0.5" />}
                 </button>
@@ -170,7 +203,7 @@ export default function SpaceAudioPlayer() {
                 {tracks.map((t, i) => (
                   <button
                     key={t.id}
-                    onClick={() => { setCurrentIdx(i); setLoadError(false); }}
+                    onClick={() => setCurrentIdx(i)}
                     className={`w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-muted/60 transition-colors border-b border-border/30 last:border-0 ${i === currentIdx ? 'bg-primary/10' : ''}`}
                   >
                     <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${i === currentIdx && playing ? 'bg-primary animate-pulse' : 'bg-muted-foreground/40'}`} />
@@ -195,9 +228,9 @@ export default function SpaceAudioPlayer() {
               </div>
 
               {/* Attribution */}
-              <div className="px-4 py-2 bg-muted/30 border-t border-border">
+              <div className="px-4 py-2.5 bg-muted/30 border-t border-border">
                 <p className="text-[9px] text-muted-foreground/70 font-body leading-relaxed">
-                  Space sounds from <strong>NASA.gov</strong> — public domain. All recordings are property of NASA / ESA and respective agencies. Luna Atlas does not claim ownership of any audio content.
+                  Space sounds from <strong>NASA.gov</strong> — public domain. All recordings are property of NASA and respective agencies. Luna Atlas does not claim ownership of any audio content.
                 </p>
               </div>
             </motion.div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, MapPin, Calendar, Users, Flag, Ruler, ExternalLink, Youtube, Images } from 'lucide-react';
 import { LAYER_COLORS } from './moonData';
 import { motion, AnimatePresence } from 'framer-motion';
-import ImagePreviewModal from './ImagePreviewModal';
+import ImagePreviewModal from './ImagePreviewModal.jsx';
 import YoutubeModal from './YoutubeModal';
 
 const NASA_URLS = {
