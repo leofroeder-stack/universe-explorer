@@ -35,11 +35,15 @@ export default function MoonExplorer() {
     LAYER_TYPES.MISSIONS, LAYER_TYPES.EVENTS, LAYER_TYPES.OBJECTS,
   ]);
   const [activeScientificLayers, setActiveScientificLayers] = useState([]);
+  const [timelineMinimized, setTimelineMinimized] = useState(false);
 
   const toggleScientificLayer = useCallback((layer) => {
-    setActiveScientificLayers(prev =>
-      prev.includes(layer) ? prev.filter(l => l !== layer) : [...prev, layer]
-    );
+    setActiveScientificLayers(prev => {
+      const next = prev.includes(layer) ? prev.filter(l => l !== layer) : [...prev, layer];
+      // Auto-minimize timeline when any scientific layer is activated
+      if (next.length > 0) setTimelineMinimized(true);
+      return next;
+    });
   }, []);
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [timeFilteredMarkers, setTimeFilteredMarkers] = useState(null);
@@ -344,6 +348,8 @@ export default function MoonExplorer() {
                   <TimeSlider
                     allMarkers={layerFilteredMarkers}
                     onFilteredMarkersChange={handleTimeFilter}
+                    minimized={timelineMinimized}
+                    onMinimizeChange={setTimelineMinimized}
                   />
                 )}
               </motion.div>

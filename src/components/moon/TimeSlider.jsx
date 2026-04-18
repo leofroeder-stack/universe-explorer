@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, ChevronUp, ChevronDown, Clock } from 'lucide-react';
 
 // Only markers with parseable dates (missions + events with real years)
 const MIN_YEAR = 1959;
@@ -11,10 +11,18 @@ function parseYear(dateStr) {
   return match ? parseInt(match[0]) : null;
 }
 
-export default function TimeSlider({ allMarkers, onFilteredMarkersChange }) {
+export default function TimeSlider({ allMarkers, onFilteredMarkersChange, minimized: minimizedProp, onMinimizeChange }) {
   const [year, setYear] = useState(MAX_YEAR);
   const [playing, setPlaying] = useState(false);
+  const [minimizedInternal, setMinimizedInternal] = useState(false);
   const intervalRef = React.useRef(null);
+
+  // Support both controlled (minimizedProp) and uncontrolled modes
+  const minimized = minimizedProp !== undefined ? minimizedProp : minimizedInternal;
+  const setMinimized = (val) => {
+    setMinimizedInternal(val);
+    if (onMinimizeChange) onMinimizeChange(val);
+  };
 
   const filterByYear = useCallback((y) => {
     const filtered = allMarkers.filter(m => {
@@ -83,8 +91,24 @@ export default function TimeSlider({ allMarkers, onFilteredMarkersChange }) {
 
   const pct = ((year - MIN_YEAR) / (MAX_YEAR - MIN_YEAR)) * 100;
 
+  if (minimized) {
+    return (
+      <div className="absolute bottom-16 left-4 z-[500]">
+        <button
+          onClick={() => setMinimized(false)}
+          className="flex items-center gap-2 px-3 py-2 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-xl hover:bg-secondary transition-colors"
+          title="Expand Historical Timeline"
+        >
+          <Clock className="w-3.5 h-3.5 text-primary" />
+          <span className="text-xs font-body font-medium text-foreground">{year}</span>
+          <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-[500]">
+    <div className="absolute bottom-16 left-4 w-[calc(100%-2rem)] max-w-2xl z-[500]">
       <div className="bg-card/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl px-5 pt-4 pb-3">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
@@ -123,6 +147,14 @@ export default function TimeSlider({ allMarkers, onFilteredMarkersChange }) {
             </button>
             <button onClick={() => { setYear(MAX_YEAR); filterByYear(MAX_YEAR); }} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
               <SkipForward className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+            {/* Minimize button */}
+            <button
+              onClick={() => setMinimized(true)}
+              className="p-1.5 rounded-lg hover:bg-secondary transition-colors ml-1"
+              title="Minimize timeline"
+            >
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </div>
         </div>
