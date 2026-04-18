@@ -136,7 +136,7 @@ export default function SolarSystem() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x020408);
 
-    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 500000);
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 2000000);
     camera.position.set(0, 55, 90);
     camera.lookAt(0, 0, 0);
 
@@ -367,9 +367,9 @@ export default function SolarSystem() {
     };
     const onMouseUp = () => { isDragging = false; };
     const onWheel = (e) => {
-      // Dynamic scroll speed: faster when zoomed far out
-      const speed = radius < 300 ? 0.08 : radius < 5000 ? 0.3 : radius < 50000 ? 2 : 20;
-      radius = Math.max(15, radius + e.deltaY * speed);
+      // Exponential zoom: speed scales proportionally to current radius
+      const speed = radius * 0.004;
+      radius = Math.max(15, Math.min(1500000, radius + e.deltaY * speed));
       updateCamera();
     };
 
@@ -388,7 +388,7 @@ export default function SolarSystem() {
       if (e.touches.length === 2 && pinchDist0) {
         e.preventDefault();
         const d = getTouchDist(e.touches);
-        radius = Math.max(15, pinchRadius0 * (pinchDist0 / d));
+        radius = Math.max(15, Math.min(1500000, pinchRadius0 * (pinchDist0 / d)));
         updateCamera();
       } else if (touchPrev) {
         const dx = e.touches[0].clientX - touchPrev.x, dy = e.touches[0].clientY - touchPrev.y;
