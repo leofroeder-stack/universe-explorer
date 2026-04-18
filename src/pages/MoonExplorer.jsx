@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { Globe, Map, Scan, Moon, Ruler, PanelLeftClose, PanelLeftOpen, EyeOff, Eye } from 'lucide-react';
+import { Globe, Map, Scan, Moon, Ruler, PanelLeftClose, PanelLeftOpen, EyeOff, Eye, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Moon3DGlobe from '../components/moon/Moon3DGlobe';
@@ -36,6 +36,7 @@ export default function MoonExplorer() {
   ]);
   const [activeScientificLayers, setActiveScientificLayers] = useState([]);
   const [timelineMinimized, setTimelineMinimized] = useState(false);
+  const [flashEnabled, setFlashEnabled] = useState(false);
 
   const toggleScientificLayer = useCallback((layer) => {
     setActiveScientificLayers(prev => {
@@ -272,6 +273,20 @@ export default function MoonExplorer() {
                 />
               </div>
             )}
+            {/* TLP Flash toggle */}
+            <button
+              onClick={() => setFlashEnabled(f => !f)}
+              title="Toggle Transient Lunar Phenomena (TLP) flashes"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border transition-all ${
+                flashEnabled
+                  ? 'bg-amber-500/20 border-amber-400/60 text-amber-300'
+                  : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">TLP Flashes</span>
+            </button>
+
             {!isHidden('hide_view_toggle') && (
               <Tabs value={viewMode} onValueChange={handleTabChange}>
                 <TabsList className="bg-secondary">
@@ -321,6 +336,7 @@ export default function MoonExplorer() {
                   planet={planet}
                   uiHidden={uiHidden}
                   activeScientificLayers={activeScientificLayers}
+                  flashEnabled={flashEnabled}
                 />
               </motion.div>
             ) : (
@@ -343,6 +359,7 @@ export default function MoonExplorer() {
                  measurePointB={measurePointB}
                  onMeasurePoint={handleMeasurePoint}
                  activeScientificLayers={activeScientificLayers}
+                 flashEnabled={flashEnabled}
                 />
                 {/* Time slider */}
                 {!isHidden('hide_time_slider') && (

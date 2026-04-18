@@ -11,6 +11,7 @@ import { useAppSettings } from '@/components/AppSettingsProvider';
 import { SCIENTIFIC_LAYER_META } from './scientificLayers';
 import { ScientificLayerLegend } from './ScientificLayerOverlay';
 import ParallaxStarfield from './ParallaxStarfield';
+import LunarFlash from './LunarFlash';
 
 // In-memory cache (survives re-renders in same session)
 const memoryCache = {};
@@ -86,7 +87,7 @@ function valueToThreeColor(gradient, value) {
   );
 }
 
-export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon', uiHidden = false, activeScientificLayers = [] }) {
+export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon', uiHidden = false, activeScientificLayers = [], flashEnabled = false }) {
   const containerRef = useRef(null);
   const sceneRef = useRef({});
   const [isLoading, setIsLoading] = useState(true);
@@ -97,6 +98,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
   // Refs exposed to overlay components
   const globeRotYRef = useRef(0);   // live Y rotation of globe (for compass)
   const sunLightRef = useRef(null); // live ref to Three.js directional light (for sun angle)
+  const cameraZRef  = useRef(3.2);  // live camera Z distance (for LunarFlash projection)
 
   // Guided tour
   const [tourActive, setTourActive] = useState(false);
@@ -472,8 +474,9 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       }
       if (camera.position.z > AUTO_SWITCH_THRESHOLD + 0.2) autoSwitchTriggered = false;
 
-      // Keep compass ref in sync
+      // Keep compass + camera refs in sync
       globeRotYRef.current = moon.rotation.y;
+      cameraZRef.current   = camera.position.z;
       renderer.render(scene, camera);
     };
     animate();
@@ -691,6 +694,9 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       {activeScientificLayers.length > 0 && (
         <ScientificLayerLegend activeScientificLayers={activeScientificLayers} />
       )}
+
+      {/* Transient Lunar Phenomena flash overlay */}
+      <LunarFlash enabled={flashEnabled} mode="3d" globeRotationRef={globeRotYRef} cameraZRef={cameraZRef} />
 
       {!uiHidden && (
         <div className="absolute bottom-14 left-4 text-[10px] text-muted-foreground/60 font-body">
