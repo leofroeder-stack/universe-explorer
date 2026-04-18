@@ -120,6 +120,8 @@ export default function SolarSystem() {
   const pausedRef = useRef(false);
   const clockRef = useRef(0);
   const [zoomRadius, setZoomRadius] = useState(110);
+  const sunShaderRef = useRef(null);
+  const sunCoronaRef = useRef([]);
 
   const handlePause = useCallback(() => {
     pausedRef.current = !pausedRef.current;
@@ -265,30 +267,127 @@ export default function SolarSystem() {
       }
 
       const geo = new THREE.SphereGeometry(p.radius, 64, 64);
-      loader.load(
-        p.textureUrl,
-        (tex) => {
-          const mat = new THREE.MeshStandardMaterial({
-            map: tex,
-            roughness: p.name === 'Sun' ? 1 : 0.65,
-            metalness: p.name === 'Sun' ? 0 : 0.05,
-            emissive: p.emissive ? new THREE.Color(p.emissive) : new THREE.Color(0x000000),
-            emissiveIntensity: p.emissiveIntensity || 0,
-            emissiveMap: p.name === 'Sun' ? tex : null,
-          });
-          mesh.material = mat;
-          mesh.material.needsUpdate = true;
-          loaded++;
-          if (loaded >= PLANETS.length) setIsLoading(false);
-        },
-        undefined,
-        () => {
-          loaded++;
-          if (loaded >= PLANETS.length) setIsLoading(false);
-        }
-      );
 
-      const mat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.9 });
+      let mat;
+      if (p.name === 'Sun') {
+        // Animated procedural Sun shader — no texture needed
+        mat = new THREE.ShaderMaterial({
+          uniforms: { uTime: { value: 0.0 } },
+          vertexShader: `
+            varying vec3 vNormal;
+            varying vec2 vUv;
+            varying vec3 vPosition;
+            void main() {
+              vNormal = normalize(normalMatrix * normal);
+              vUv = uv;
+              vPosition = position;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `,
+          fragmentShader: `
+            uniform float uTime;
+            varying vec3 vNormal;
+            varying vec2 vUv;
+            varying vec3 vPosition;
+
+            // Hash-based noise helpers
+            vec3 hash3(vec3 p) {
+              p = fract(p * vec3(443.8975, 397.2973, 491.1871));
+              p += dot(p.zxy, p.yxz + 19.19);
+              return fract(vec3(p.x * p.y, p.z * p.x, p.y * p.z));
+            }
+            float noise(vec3 p) {
+              vec3 i = floor(p);
+              vec3 f = fract(p);
+              f = f*f*(3.0-2.0*f);
+              return mix(
+                mix(mix(dot(hash3(i+vec3(0,0,0))-0.5, f-vec3(0,0,0)),
+                        dot(hash3(i+vec3(1,0,0))-0.5, f-vec3(1,0,0)), f.x),
+                    mix(dot(hash3(i+vec3(0,1,0))-0.5, f-vec3(0,1,0)),
+                        dot(hash3(i+vec3(1,1,0))-0.5, f-vec3(1,1,0)), f.x), f.y),
+                mix(mix(dot(hash3(i+vec3(0,0,1))-0.5, f-vec3(0,0,1)),
+                        dot(hash3(i+vec3(1,0,1))-0.5, f-vec3(1,0,1)), f.x),
+                    mix(dot(hash3(i+vec3(0,1,1))-0.5, f-vec3(0,1,1)),
+                        dot(hash3(i+vec3(1,1,1))-0.5, f-vec3(1,1,1)), f.x), f.y), f.z);
+            }
+            float fbm(vec3 p) {
+              float v = 0.0;
+              float a = 0.5;
+              for(int i=0; i<6; i++) {
+                v += a * noise(p);
+                p = p * 2.1 + vec3(0.3, 0.7, 1.1);
+                a *= 0.5;
+              }
+              return v;
+            }
+
+            void main() {
+              vec3 p = normalize(vPosition);
+              float t = uTime;
+
+              // Turbulent plasma flow — two layers offset in time
+              float n1 = fbm(p * 2.5 + vec3(t * 0.08, t * 0.06, t * 0.05));
+              float n2 = fbm(p * 4.0 - vec3(t * 0.05, t * 0.09, t * 0.07));
+              float plasma = n1 * 0.65 + n2 * 0.35;
+              plasma = clamp(plasma * 2.0 - 0.3, 0.0, 1.0);
+
+              // Dark sunspot regions (magnetic field concentrations)
+              float spot = fbm(p * 3.5 + vec3(t * 0.03, 0.0, t * 0.04));
+              float spotMask = smoothstep(0.62, 0.55, spot); // dark where spot is high
+
+              // Color ramp: deep amber-red core → golden → bright white-yellow
+              vec3 colDark  = vec3(0.35, 0.10, 0.01); // dark magnetic region
+              vec3 colMid   = vec3(0.85, 0.42, 0.02); // mid amber
+              vec3 colBright= vec3(1.00, 0.80, 0.25); // bright golden plasma
+              vec3 colHot   = vec3(1.00, 0.97, 0.80); // near-white hot spot
+
+              vec3 baseColor = mix(colDark, colMid, plasma);
+              baseColor = mix(baseColor, colBright, smoothstep(0.35, 0.7, plasma));
+              baseColor = mix(baseColor, colHot, smoothstep(0.72, 0.95, plasma));
+
+              // Apply sunspot darkening
+              baseColor = mix(baseColor * 0.18, baseColor, spotMask);
+
+              // Limb darkening — edges of sphere are cooler/darker
+              float limb = dot(vNormal, vec3(0.0, 0.0, 1.0));
+              float limbDarken = pow(max(limb, 0.0), 0.45);
+              baseColor *= mix(0.45, 1.0, limbDarken);
+
+              // Bright active region flares
+              float flare = fbm(p * 6.0 + vec3(t * 0.18, t * 0.12, 0.0));
+              float flareMask = smoothstep(0.58, 0.75, flare) * smoothstep(0.1, 0.4, limb);
+              baseColor += vec3(1.0, 0.85, 0.4) * flareMask * 0.6;
+
+              gl_FragColor = vec4(baseColor, 1.0);
+            }
+          `,
+        });
+        sunShaderRef.current = mat;
+        loaded++; // Sun doesn't need texture loading
+        if (loaded >= PLANETS.length) setIsLoading(false);
+      } else {
+        mat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.9 });
+        loader.load(
+          p.textureUrl,
+          (tex) => {
+            const loadedMat = new THREE.MeshStandardMaterial({
+              map: tex,
+              roughness: 0.65,
+              metalness: 0.05,
+            });
+            mesh.material = loadedMat;
+            mesh.material.needsUpdate = true;
+            loaded++;
+            if (loaded >= PLANETS.length) setIsLoading(false);
+          },
+          undefined,
+          () => {
+            loaded++;
+            if (loaded >= PLANETS.length) setIsLoading(false);
+          }
+        );
+      }
+
       const mesh = new THREE.Mesh(geo, mat);
       mesh.userData = { planet: p, index: i };
 
@@ -304,37 +403,33 @@ export default function SolarSystem() {
 
       // Sun glow — inner + outer layers for a realistic corona look
       if (p.name === 'Sun') {
-        const vsGlow = `varying vec3 vNormal; void main(){ vNormal = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
-        // Inner plasma rim — bright golden-amber like SDO 171Å limb brightening
-        const innerGlowGeo = new THREE.SphereGeometry(p.radius * 1.12, 32, 32);
+        const vsGlow = `uniform float uTime; varying vec3 vNormal; void main(){ vNormal = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
+        // Inner plasma rim — pulsing golden-amber
         const innerGlowMat = new THREE.ShaderMaterial({
+          uniforms: { uTime: { value: 0 } },
           vertexShader: vsGlow,
-          fragmentShader: `varying vec3 vNormal; void main(){ float rim = 1.0 - abs(dot(vNormal, vec3(0,0,1))); float i = pow(rim, 2.5); gl_FragColor = vec4(1.0, 0.72, 0.05, 1.0) * i * 3.5; }`,
-          side: THREE.BackSide,
-          blending: THREE.AdditiveBlending,
-          transparent: true,
+          fragmentShader: `uniform float uTime; varying vec3 vNormal; void main(){ float rim = 1.0 - abs(dot(vNormal, vec3(0,0,1))); float pulse = 1.0 + 0.12 * sin(uTime * 1.8); float i = pow(rim, 2.3) * pulse; gl_FragColor = vec4(1.0, 0.72, 0.05, 1.0) * i * 3.5; }`,
+          side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true,
         });
-        scene.add(new THREE.Mesh(innerGlowGeo, innerGlowMat));
-        // Mid corona — warm orange fade
-        const midGlowGeo = new THREE.SphereGeometry(p.radius * 1.45, 32, 32);
+        scene.add(new THREE.Mesh(new THREE.SphereGeometry(p.radius * 1.12, 32, 32), innerGlowMat));
+        // Mid corona — breathing pulse
         const midGlowMat = new THREE.ShaderMaterial({
+          uniforms: { uTime: { value: 0 } },
           vertexShader: vsGlow,
-          fragmentShader: `varying vec3 vNormal; void main(){ float rim = 1.0 - abs(dot(vNormal, vec3(0,0,1))); float i = pow(rim, 4.0); gl_FragColor = vec4(1.0, 0.5, 0.02, 1.0) * i * 1.8; }`,
-          side: THREE.BackSide,
-          blending: THREE.AdditiveBlending,
-          transparent: true,
+          fragmentShader: `uniform float uTime; varying vec3 vNormal; void main(){ float rim = 1.0 - abs(dot(vNormal, vec3(0,0,1))); float pulse = 1.0 + 0.18 * sin(uTime * 0.9 + 1.0); float i = pow(rim, 3.8) * pulse; gl_FragColor = vec4(1.0, 0.5, 0.02, 1.0) * i * 2.0; }`,
+          side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true,
         });
-        scene.add(new THREE.Mesh(midGlowGeo, midGlowMat));
-        // Outer diffuse corona — deep amber halo
-        const outerGlowGeo = new THREE.SphereGeometry(p.radius * 2.2, 32, 32);
+        scene.add(new THREE.Mesh(new THREE.SphereGeometry(p.radius * 1.5, 32, 32), midGlowMat));
+        // Outer diffuse corona — slow undulating halo
         const outerGlowMat = new THREE.ShaderMaterial({
+          uniforms: { uTime: { value: 0 } },
           vertexShader: vsGlow,
-          fragmentShader: `varying vec3 vNormal; void main(){ float rim = 1.0 - abs(dot(vNormal, vec3(0,0,1))); float i = pow(rim, 6.0); gl_FragColor = vec4(0.9, 0.35, 0.0, 1.0) * i * 0.7; }`,
-          side: THREE.BackSide,
-          blending: THREE.AdditiveBlending,
-          transparent: true,
+          fragmentShader: `uniform float uTime; varying vec3 vNormal; void main(){ float rim = 1.0 - abs(dot(vNormal, vec3(0,0,1))); float pulse = 1.0 + 0.22 * sin(uTime * 0.5 + 2.5); float i = pow(rim, 5.5) * pulse; gl_FragColor = vec4(0.9, 0.35, 0.0, 1.0) * i * 0.8; }`,
+          side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true,
         });
-        scene.add(new THREE.Mesh(outerGlowGeo, outerGlowMat));
+        scene.add(new THREE.Mesh(new THREE.SphereGeometry(p.radius * 2.4, 32, 32), outerGlowMat));
+        // Store corona mats for animate loop
+        sunCoronaRef.current = [innerGlowMat, midGlowMat, outerGlowMat];
       }
 
       // Saturn rings
@@ -463,8 +558,16 @@ export default function SolarSystem() {
       const mwVisibility = Math.min(1, Math.max(0, (radius - 800) / 3000));
       mwMat.opacity = mwVisibility * 0.6;
 
+      // Always tick sun shader time — even when paused (sun never stops burning)
+      clockRef.current += 0.008;
+      if (sunShaderRef.current) {
+        sunShaderRef.current.uniforms.uTime.value = clockRef.current;
+      }
+      sunCoronaRef.current.forEach(m => {
+        if (m.uniforms) m.uniforms.uTime.value = clockRef.current;
+      });
+
       if (!pausedRef.current) {
-        clockRef.current += 0.008;
         planetMeshes.forEach((mesh) => {
           const { planet } = mesh.userData;
           if (planet.distance > 0) {
