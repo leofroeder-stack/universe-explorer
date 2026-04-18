@@ -1,5 +1,3 @@
-import { encodeBase64 } from 'jsr:@std/encoding@0.221/base64';
-
 Deno.serve(async (req) => {
   const body = await req.json();
   const { url } = body;
@@ -23,8 +21,13 @@ Deno.serve(async (req) => {
   const arrayBuffer = await response.arrayBuffer();
   const uint8 = new Uint8Array(arrayBuffer);
 
-  // Use standard library base64 encoding
-  const base64 = encodeBase64(uint8);
+  // Safe base64 encoding for large binary data
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < uint8.length; i += chunkSize) {
+    binary += String.fromCharCode(...uint8.subarray(i, i + chunkSize));
+  }
+  const base64 = btoa(binary);
 
   return Response.json({ dataUrl: `data:${contentType};base64,${base64}` });
 });

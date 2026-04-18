@@ -10,8 +10,6 @@ import { base44 } from '@/api/base44Client';
 import { useAppSettings } from '@/components/AppSettingsProvider';
 import { SCIENTIFIC_LAYER_META } from './scientificLayers';
 import { ScientificLayerLegend } from './ScientificLayerOverlay';
-import ParallaxStarfield from './ParallaxStarfield';
-import LunarFlash from './LunarFlash';
 
 // In-memory cache (survives re-renders in same session)
 const memoryCache = {};
@@ -87,7 +85,7 @@ function valueToThreeColor(gradient, value) {
   );
 }
 
-export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon', uiHidden = false, activeScientificLayers = [], flashEnabled = false }) {
+export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon', uiHidden = false, activeScientificLayers = [] }) {
   const containerRef = useRef(null);
   const sceneRef = useRef({});
   const [isLoading, setIsLoading] = useState(true);
@@ -98,7 +96,6 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
   // Refs exposed to overlay components
   const globeRotYRef = useRef(0);   // live Y rotation of globe (for compass)
   const sunLightRef = useRef(null); // live ref to Three.js directional light (for sun angle)
-  const cameraZRef  = useRef(3.2);  // live camera Z distance (for LunarFlash projection)
 
   // Guided tour
   const [tourActive, setTourActive] = useState(false);
@@ -224,7 +221,6 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
-    renderer.setClearColor(0x000000, 0); // fully transparent so starfield canvas shows through
     container.appendChild(renderer.domElement);
 
     const ambientLight = new THREE.AmbientLight(0x221e3b, 1.2);
@@ -274,13 +270,22 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     });
     scene.add(new THREE.Mesh(glowGeometry, glowMaterial));
 
-    // Stars are now rendered by ParallaxStarfield component (separate canvas layer)
+    const starsGeo = new THREE.BufferGeometry();
+    const starPos = [], starColors = [];
+    for (let i = 0; i < 3000; i++) {
+      starPos.push((Math.random() - 0.5) * 200, (Math.random() - 0.5) * 200, (Math.random() - 0.5) * 200);
+      starColors.push(0.8 + Math.random() * 0.2, 0.8 + Math.random() * 0.2, 0.9 + Math.random() * 0.1);
+    }
+    starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
+    starsGeo.setAttribute('color', new THREE.Float32BufferAttribute(starColors, 3));
+    const stars = new THREE.Points(starsGeo, new THREE.PointsMaterial({ size: 0.08, vertexColors: true, transparent: true, opacity: 0.9 }));
+    scene.add(stars);
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
     sceneRef.current = {
-      scene, camera, renderer, moon,
+      scene, camera, renderer, moon, stars,
       markerMeshes: [], material,
       rotationVelocity: { x: 0, y: 0.002 },
     };
@@ -474,9 +479,9 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       }
       if (camera.position.z > AUTO_SWITCH_THRESHOLD + 0.2) autoSwitchTriggered = false;
 
-      // Keep compass + camera refs in sync
+      stars.rotation.y += 0.00005;
+      // Keep compass ref in sync
       globeRotYRef.current = moon.rotation.y;
-      cameraZRef.current   = camera.position.z;
       renderer.render(scene, camera);
     };
     animate();
@@ -625,10 +630,8 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
   }, [markers, selectedMarker]);
 
   return (
-    <div className="relative w-full h-full" style={{ background: 'hsl(222 47% 6%)' }}>
-      {/* Parallax animated starfield — renders behind the globe */}
-      <ParallaxStarfield globeRotationRef={globeRotYRef} />
-      <div ref={containerRef} className="absolute inset-0 cursor-grab active:cursor-grabbing" style={{ zIndex: 1 }} />
+    <div className="relative w-full h-full">
+      <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/50">
@@ -640,7 +643,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       )}
 
       {/* Zoom, Reset & Phase Controls */}
-      {!uiHidden && <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
+      {!uiHidden && <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
         <button onClick={() => handleZoom(-1)}
           className="w-9 h-9 rounded-xl bg-card/90 backdrop-blur-xl border border-border flex items-center justify-center hover:bg-secondary transition-colors shadow-lg"
           title="Zoom In">
@@ -694,9 +697,6 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       {activeScientificLayers.length > 0 && (
         <ScientificLayerLegend activeScientificLayers={activeScientificLayers} />
       )}
-
-      {/* Transient Lunar Phenomena flash overlay */}
-      <LunarFlash enabled={flashEnabled} mode="3d" globeRotationRef={globeRotYRef} cameraZRef={cameraZRef} />
 
       {!uiHidden && (
         <div className="absolute bottom-14 left-4 text-[10px] text-muted-foreground/60 font-body">

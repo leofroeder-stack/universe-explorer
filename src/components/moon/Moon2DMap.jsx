@@ -4,7 +4,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { LAYER_COLORS } from './moonData';
 import ScientificLayerOverlay, { ScientificLayerLegend } from './ScientificLayerOverlay';
-import LunarFlash from './LunarFlash';
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 7;
@@ -106,7 +105,7 @@ function MeasurementClickHandler({ measureActive, markers, onMeasurePoint }) {
   return null;
 }
 
-export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onSwitchTo3D, planet = 'moon', measureActive, measurePointA, measurePointB, onMeasurePoint, activeScientificLayers = [], flashEnabled = false }) {
+export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onSwitchTo3D, planet = 'moon', measureActive, measurePointA, measurePointB, onMeasurePoint, activeScientificLayers = [] }) {
   const moonTileUrl = TILE_URLS[planet] || TILE_URLS.moon;
 
   const markerElements = useMemo(() => {
@@ -157,7 +156,6 @@ export default function Moon2DMap({ markers, selectedMarker, onSelectMarker, onS
         {measureActive && <MeasurementClickHandler measureActive={measureActive} markers={markers} onMeasurePoint={onMeasurePoint} />}
       </MapContainer>
       <ScientificLayerLegend activeScientificLayers={activeScientificLayers} />
-      <LunarFlash enabled={flashEnabled} mode="2d" />
     </div>
   );
 }
