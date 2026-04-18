@@ -243,18 +243,54 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       metalness: 0.0,
     });
 
-    // Fetch texture via local signed URL
+    // Fetch texture via local signed URL, with fallback to source
     fetchTextureSignedUrl(planet).then((signedUrl) => {
-      if (!signedUrl) { setIsLoading(false); return; }
-      textureLoader.load(signedUrl, (tex) => {
+      if (!signedUrl) {
+        // Fallback: use original texture URL
+        textureLoader.load(textureUrl, (tex) => {
+          tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          material.map = tex;
+          material.bumpMap = tex;
+          material.bumpScale = 0.012;
+          material.needsUpdate = true;
+          setIsLoading(false);
+        }, undefined, () => setIsLoading(false));
+        return;
+      }
+      textureLoader.load(
+        signedUrl,
+        (tex) => {
+          tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+          material.map = tex;
+          material.bumpMap = tex;
+          material.bumpScale = 0.012;
+          material.needsUpdate = true;
+          setIsLoading(false);
+        },
+        undefined,
+        () => {
+          // Local load failed, fallback to source
+          textureLoader.load(textureUrl, (tex) => {
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            material.map = tex;
+            material.bumpMap = tex;
+            material.bumpScale = 0.012;
+            material.needsUpdate = true;
+            setIsLoading(false);
+          }, undefined, () => setIsLoading(false));
+        }
+      );
+    }).catch(() => {
+      // Fallback: use original texture URL
+      textureLoader.load(textureUrl, (tex) => {
         tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
         material.map = tex;
         material.bumpMap = tex;
         material.bumpScale = 0.012;
         material.needsUpdate = true;
         setIsLoading(false);
-      });
-    }).catch(() => setIsLoading(false));
+      }, undefined, () => setIsLoading(false));
+    });
 
     const moon = new THREE.Mesh(geometry, material);
     moon.receiveShadow = true;

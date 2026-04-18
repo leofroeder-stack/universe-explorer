@@ -33,28 +33,62 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Unknown texture key' }, { status: 400 });
       }
 
-      const textureRes = await fetch(sourceUrl);
-      if (!textureRes.ok) {
-        return Response.json({ error: 'Failed to fetch texture from source' }, { status: 500 });
+      let textureRes;
+      try {
+        textureRes = await fetch(sourceUrl, { timeout: 30000 });
+      } catch (fetchErr) {
+        return Response.json({ error: `Failed to fetch texture: ${fetchErr.message}` }, { status: 502 });
       }
 
-      const blob = await textureRes.blob();
+      if (!textureRes.ok) {
+        return Response.json({ error: `Texture source returned ${textureRes.status}` }, { status: 502 });
+      }
+
+      let blob;
+      try {
+        blob = await textureRes.blob();
+      } catch (blobErr) {
+        return Response.json({ error: `Failed to process texture: ${blobErr.message}` }, { status: 500 });
+      }
+
       const arrayBuffer = await blob.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
       // Upload as private file
-      const uploadRes = await base44.integrations.Core.UploadPrivateFile({
-        file: uint8Array,
-      });
+      let uploadRes;
+      try {
+        uploadRes = await base44.integrations.Core.UploadPrivateFile({
+          file: uint8Array,
+        });
+      } catch (uploadErr) {
+        return Response.json({ error: `Failed to upload texture: ${uploadErr.message}` }, { status: 500 });
+      }
 
       // Store mapping in AppSettings
-      await base44.asServiceRole.entities.AppSettings.create({
-        key: `texture_${textureKey}`,
-        value: uploadRes.file_uri,
-        category: 'textures',
-        label: `${textureKey} texture URI`,
-        description: `Private file URI for ${textureKey} texture`,
-      });
+      try {
+        // Check if entry already exists
+        const existing = await base44.asServiceRole.entities.AppSettings.filter({
+          key: `texture_${textureKey}`,
+        });
+
+        if (existing.length > 0) {
+          // Update existing
+          await base44.asServiceRole.entities.AppSettings.update(existing[0].id, {
+            value: uploadRes.file_uri,
+          });
+        } else {
+          // Create new
+          await base44.asServiceRole.entities.AppSettings.create({
+            key: `texture_${textureKey}`,
+            value: uploadRes.file_uri,
+            category: 'textures',
+            label: `${textureKey} texture URI`,
+            description: `Private file URI for ${textureKey} texture`,
+          });
+        }
+      } catch (settingsErr) {
+        return Response.json({ error: `Failed to save texture: ${settingsErr.message}` }, { status: 500 });
+      }
 
       return Response.json({
         success: true,
@@ -81,16 +115,19 @@ Deno.serve(async (req) => {
       });
 
       if (setting.length === 0) {
-        return Response.json({ error: 'Texture not cached' }, { status: 404 });
+        return Response.json({ signedUrl: null, isCached: false });
       }
 
       const fileUri = setting[0].value;
-      const signedUrl = await base44.integrations.Core.CreateFileSignedUrl({
-        file_uri: fileUri,
-        expires_in: 86400, // 24 hours
-      });
-
-      return Response.json({ signedUrl: signedUrl.signed_url });
+      try {
+        const signedUrlRes = await base44.integrations.Core.CreateFileSignedUrl({
+          file_uri: fileUri,
+          expires_in: 86400, // 24 hours
+        });
+        return Response.json({ signedUrl: signedUrlRes.signed_url, isCached: true });
+      } catch (signErr) {
+        return Response.json({ signedUrl: null, isCached: false, error: signErr.message });
+      }
     }
 
     return Response.json({ error: 'Invalid action' }, { status: 400 });

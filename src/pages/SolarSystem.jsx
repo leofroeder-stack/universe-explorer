@@ -428,12 +428,54 @@ export default function SolarSystem() {
         if (loaded >= PLANETS.length) setIsLoading(false);
       } else {
         mat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.9 });
-        // Load from local texture manager
+        // Try local texture first, fallback to source URL
         base44.functions.invoke('textureManager', { action: 'get', textureKey: p.name.toLowerCase() })
           .then(res => {
-            if (res.data?.signedUrl) {
+            const signedUrl = res.data?.signedUrl;
+            const fallbackUrl = p.textureUrl;
+
+            if (signedUrl) {
               loader.load(
-                res.data.signedUrl,
+                signedUrl,
+                (tex) => {
+                  const loadedMat = new THREE.MeshStandardMaterial({
+                    map: tex,
+                    roughness: 0.65,
+                    metalness: 0.05,
+                  });
+                  mesh.material = loadedMat;
+                  mesh.material.needsUpdate = true;
+                  loaded++;
+                  if (loaded >= PLANETS.length) setIsLoading(false);
+                },
+                undefined,
+                () => {
+                  // Local texture failed, try fallback
+                  loader.load(
+                    fallbackUrl,
+                    (tex) => {
+                      const loadedMat = new THREE.MeshStandardMaterial({
+                        map: tex,
+                        roughness: 0.65,
+                        metalness: 0.05,
+                      });
+                      mesh.material = loadedMat;
+                      mesh.material.needsUpdate = true;
+                      loaded++;
+                      if (loaded >= PLANETS.length) setIsLoading(false);
+                    },
+                    undefined,
+                    () => {
+                      loaded++;
+                      if (loaded >= PLANETS.length) setIsLoading(false);
+                    }
+                  );
+                }
+              );
+            } else {
+              // No local texture, use fallback
+              loader.load(
+                fallbackUrl,
                 (tex) => {
                   const loadedMat = new THREE.MeshStandardMaterial({
                     map: tex,
@@ -451,14 +493,29 @@ export default function SolarSystem() {
                   if (loaded >= PLANETS.length) setIsLoading(false);
                 }
               );
-            } else {
-              loaded++;
-              if (loaded >= PLANETS.length) setIsLoading(false);
             }
           })
           .catch(() => {
-            loaded++;
-            if (loaded >= PLANETS.length) setIsLoading(false);
+            // Error fetching from manager, use fallback
+            loader.load(
+              p.textureUrl,
+              (tex) => {
+                const loadedMat = new THREE.MeshStandardMaterial({
+                  map: tex,
+                  roughness: 0.65,
+                  metalness: 0.05,
+                });
+                mesh.material = loadedMat;
+                mesh.material.needsUpdate = true;
+                loaded++;
+                if (loaded >= PLANETS.length) setIsLoading(false);
+              },
+              undefined,
+              () => {
+                loaded++;
+                if (loaded >= PLANETS.length) setIsLoading(false);
+              }
+            );
           });
       }
 
