@@ -10,6 +10,7 @@ import { base44 } from '@/api/base44Client';
 import { useAppSettings } from '@/components/AppSettingsProvider';
 import { SCIENTIFIC_LAYER_META } from './scientificLayers';
 import { ScientificLayerLegend } from './ScientificLayerOverlay';
+import MoonPhaseDisplay from './MoonPhaseDisplay';
 
 // In-memory cache (survives re-renders in same session)
 const memoryCache = {};
@@ -234,6 +235,41 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     fillLight.position.set(-8, -2, -6);
     scene.add(fillLight);
 
+    // Calculate real-time sun position for realistic lighting
+    const updateSunPosition = () => {
+      const now = new Date();
+      const hour = now.getHours() + now.getMinutes() / 60;
+      const sunAltitude = Math.sin((hour - 6) / 12 * Math.PI) * 0.9; // ~-1 to 1 throughout day
+      const sunAzimuth = ((hour - 6) / 12) * Math.PI * 2; // 0 to 2π
+      
+      // Position sun in 3D space (moon at origin)
+      const sunDist = 12;
+      const sunX = sunDist * Math.cos(sunAzimuth) * Math.cos(sunAltitude);
+      const sunY = sunDist * sunAltitude;
+      const sunZ = sunDist * Math.sin(sunAzimuth) * Math.cos(sunAltitude);
+      
+      sunLight.position.set(sunX, sunY, sunZ);
+      // Adjust intensity based on sun altitude (lower = dimmer)
+      const altitudeIntensity = Math.max(0.5, Math.sin((hour - 6) / 12 * Math.PI) + 0.6);
+      sunLight.intensity = 4.5 * altitudeIntensity;
+    };
+    updateSunPosition();
+    sceneRef.current.updateSunPosition = updateSunPosition;
+
+    // Calculate moon phase and adjust lighting
+    const REFERENCE_NEW_MOON = new Date('2000-01-06T18:14:00Z');
+    const LUNAR_CYCLE_DAYS = 29.53058867;
+    const updateMoonPhase = () => {
+      const now = new Date();
+      const daysSinceEpoch = (now - REFERENCE_NEW_MOON) / (1000 * 60 * 60 * 24);
+      const phase = daysSinceEpoch % LUNAR_CYCLE_DAYS;
+      const illumination = (1 - Math.cos((2 * Math.PI * phase) / LUNAR_CYCLE_DAYS)) / 2;
+      sceneRef.current.moonIllumination = illumination;
+      sceneRef.current.moonPhase = phase;
+    };
+    updateMoonPhase();
+    sceneRef.current.updateMoonPhase = updateMoonPhase;
+
     const geometry = new THREE.SphereGeometry(1, 128, 128);
     const textureLoader = new THREE.TextureLoader();
     const textureUrl = PLANET_TEXTURES[planet] || PLANET_TEXTURES.moon;
@@ -448,6 +484,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     container.addEventListener('wheel', onWheel, { passive: false });
 
     let animId;
+    let frameCounter = 0;
     const animate = () => {
       animId = requestAnimationFrame(animate);
       const vel = sceneRef.current.rotationVelocity;
@@ -471,6 +508,17 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       // Better resolution as camera zooms in
       const zoomFactor = Math.max(0, (DEFAULT_CAMERA_Z - camera.position.z) / (DEFAULT_CAMERA_Z - MIN_ZOOM));
       material.bumpScale = 0.008 + zoomFactor * 0.04;
+
+      // Update sun position every 30 frames (~0.5s at 60fps) for smooth real-time lighting
+      if (frameCounter % 30 === 0 && sceneRef.current.updateSunPosition) {
+        sceneRef.current.updateSunPosition();
+      }
+
+      // Update moon phase every 60 frames for real-time illumination tracking
+      if (frameCounter % 60 === 0 && sceneRef.current.updateMoonPhase) {
+        sceneRef.current.updateMoonPhase();
+      }
+      frameCounter++;
 
       // Auto-switch to 2D when zoomed in very close
       if (camera.position.z <= AUTO_SWITCH_THRESHOLD && !autoSwitchTriggered) {
@@ -659,11 +707,9 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
           title="Reset View">
           <RotateCcw className="w-4 h-4 text-foreground" />
         </button>
-        {/* Moon Phase button — only for moon */}
+        {/* Moon Phase Display — only for moon */}
         {planet === 'moon' && (
-          <div className="relative">
-            <MoonPhaseOverlay />
-          </div>
+          <MoonPhaseDisplay />
         )}
         {/* Guided Tour button */}
         {markers.length > 0 && (
