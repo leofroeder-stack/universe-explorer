@@ -320,6 +320,7 @@ export default function MoonExplorer() {
                   onAutoSwitch2D={handleAutoSwitch2D}
                   planet={planet}
                   uiHidden={uiHidden}
+                  activeScientificLayers={activeScientificLayers}
                 />
               </motion.div>
             ) : (

@@ -8,6 +8,8 @@ import SunAngleDisplay from './SunAngleDisplay';
 import GuidedTour from './GuidedTour';
 import { base44 } from '@/api/base44Client';
 import { useAppSettings } from '@/components/AppSettingsProvider';
+import { SCIENTIFIC_LAYER_META } from './scientificLayers';
+import { ScientificLayerLegend } from './ScientificLayerOverlay';
 
 // In-memory cache (survives re-renders in same session)
 const memoryCache = {};
@@ -62,7 +64,28 @@ const PLANET_GLOW = {
   mars: 'vec4(0.6, 0.25, 0.1, 1.0)',
 };
 
-export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon', uiHidden = false }) {
+// Helper: parse hex color string to THREE.Color
+function hexToThreeColor(hex) {
+  return new THREE.Color(hex);
+}
+
+// Helper: interpolate gradient by value [0..1]
+function valueToThreeColor(gradient, value) {
+  const n = gradient.length - 1;
+  const pos = Math.max(0, Math.min(1, value)) * n;
+  const lo = Math.floor(pos);
+  const hi = Math.min(n, lo + 1);
+  const t = pos - lo;
+  const c1 = new THREE.Color(gradient[lo]);
+  const c2 = new THREE.Color(gradient[hi]);
+  return new THREE.Color(
+    c1.r + (c2.r - c1.r) * t,
+    c1.g + (c2.g - c1.g) * t,
+    c1.b + (c2.b - c1.b) * t,
+  );
+}
+
+export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon', uiHidden = false, activeScientificLayers = [] }) {
   const containerRef = useRef(null);
   const sceneRef = useRef({});
   const [isLoading, setIsLoading] = useState(true);
@@ -501,6 +524,50 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     if (onSelectMarker) onSelectMarker(marker);
   }, [rotateMoonToMarker, animateCameraZ, onSelectMarker]);
 
+  // ─── Scientific layer overlays on globe ────────────────────────────────────
+  useEffect(() => {
+    const { moon, scene } = sceneRef.current;
+    if (!moon) return;
+
+    // Remove old scientific meshes
+    (sceneRef.current.scientificMeshes || []).forEach(m => moon.remove(m));
+    sceneRef.current.scientificMeshes = [];
+
+    activeScientificLayers.forEach(layerKey => {
+      const meta = SCIENTIFIC_LAYER_META[layerKey];
+      if (!meta) return;
+
+      meta.regions.forEach(region => {
+        const color = valueToThreeColor(meta.gradient, region.value);
+        // Convert lat/lng to 3D unit sphere position (using same mapping as markers)
+        const latRad = (region.lat * Math.PI) / 180;
+        const lngRad = ((-region.lng + 90) * Math.PI) / 180;
+        const x = Math.cos(latRad) * Math.cos(lngRad);
+        const y = Math.sin(latRad);
+        const z = Math.cos(latRad) * Math.sin(lngRad);
+
+        // Use a flat circle (disc) on the surface, sized by region.r (degrees → ~0.01 per degree)
+        const discRadius = region.r * 0.017;
+        const disc = new THREE.Mesh(
+          new THREE.CircleGeometry(discRadius, 32),
+          new THREE.MeshBasicMaterial({
+            color,
+            transparent: true,
+            opacity: 0.42,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          })
+        );
+        // Place just above surface
+        disc.position.set(x * 1.002, y * 1.002, z * 1.002);
+        // Face outward from globe center
+        disc.lookAt(new THREE.Vector3(0, 0, 0));
+        moon.add(disc);
+        sceneRef.current.scientificMeshes.push(disc);
+      });
+    });
+  }, [activeScientificLayers]);
+
   // ─── Update markers ────────────────────────────────────────────────────────
   useEffect(() => {
     const { moon } = sceneRef.current;
@@ -625,6 +692,11 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
         onFocusMarker={handleTourFocus}
         onClose={() => setTourActive(false)}
       />
+
+      {/* Scientific layer legend on 3D globe */}
+      {activeScientificLayers.length > 0 && (
+        <ScientificLayerLegend activeScientificLayers={activeScientificLayers} />
+      )}
 
       {!uiHidden && (
         <div className="absolute bottom-14 left-4 text-[10px] text-muted-foreground/60 font-body">
