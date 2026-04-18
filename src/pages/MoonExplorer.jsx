@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useFeatureFlag } from '@/components/FeatureFlagProvider';
 import { useAppSettings } from '@/components/AppSettingsProvider';
 import SpaceAudioPlayer from '../components/moon/SpaceAudioPlayer';
+import LunarEventAlert from '../components/moon/LunarEventAlert';
 
 export default function MoonExplorer() {
   const navigate = useNavigate();
@@ -148,6 +149,13 @@ export default function MoonExplorer() {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
+      {/* Lunar Event Alert */}
+      {planet === 'moon' && !uiHidden && (
+        <div className="flex-shrink-0 px-4 md:px-6 py-3 border-b border-border bg-background/40 backdrop-blur-sm">
+          <LunarEventAlert />
+        </div>
+      )}
+
       {/* Header */}
       <header className={`flex-shrink-0 border-b border-border bg-card/50 backdrop-blur-xl transition-all duration-300 ${uiHidden ? 'hidden' : ''}`}>
         <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-4">
