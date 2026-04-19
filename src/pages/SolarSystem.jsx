@@ -120,6 +120,7 @@ export default function SolarSystem() {
   const pausedRef = useRef(false);
   const clockRef = useRef(0);
   const [zoomRadius, setZoomRadius] = useState(110);
+  const [planetLabels, setPlanetLabels] = useState([]); // [{name, x, y, color}]
   const sunShaderRef = useRef(null);
   const sunCoronaRef = useRef([]);
   const [webglQuality, setWebglQuality] = useState(() => {
@@ -641,6 +642,22 @@ export default function SolarSystem() {
           mesh.rotation.y += 0.003;
         });
       }
+
+      // Project planet positions to screen for HTML labels
+      const w = container.clientWidth, h = container.clientHeight;
+      const labels = planetMeshes.map(mesh => {
+        const pos = mesh.position.clone().project(camera);
+        return {
+          name: mesh.userData.planet.name,
+          color: mesh.userData.planet.color3,
+          x: (pos.x * 0.5 + 0.5) * w,
+          y: (-pos.y * 0.5 + 0.5) * h,
+          behind: pos.z > 1,
+          radius: mesh.userData.planet.radius,
+        };
+      });
+      setPlanetLabels(labels);
+
       renderer.render(scene, camera);
     };
     animate();
@@ -728,6 +745,34 @@ export default function SolarSystem() {
           </div>
         )}
 
+        {/* Floating planet name labels */}
+        {zoomRadius < 3000 && planetLabels.map(label => !label.behind && (
+          <div
+            key={label.name}
+            className="absolute pointer-events-none select-none"
+            style={{
+              left: label.x,
+              top: label.y,
+              transform: 'translate(-50%, -100%)',
+              paddingBottom: `${Math.max(6, label.radius * 80 / zoomRadius)}px`,
+            }}
+          >
+            <span
+              className="text-[10px] font-body font-semibold tracking-wide whitespace-nowrap px-1.5 py-0.5 rounded-md"
+              style={{
+                color: label.color,
+                background: 'rgba(2,4,8,0.65)',
+                textShadow: `0 0 6px ${label.color}99`,
+                backdropFilter: 'blur(4px)',
+                border: `1px solid ${label.color}30`,
+                opacity: hoveredPlanet === label.name ? 1 : 0.75,
+              }}
+            >
+              {label.name}
+            </span>
+          </div>
+        ))}
+
         {/* Planet label on hover */}
         {hoveredPlanet && !selectedPlanet && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-body font-medium text-white border border-white/20" style={{ background: 'rgba(10,15,30,0.85)', backdropFilter: 'blur(8px)' }}>
@@ -739,6 +784,34 @@ export default function SolarSystem() {
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-white/30 font-body text-center">
           Drag to orbit • Scroll/pinch to zoom • Click a planet
         </div>
+
+        {/* Galaxy / deep space labels — show only when zoomed out enough */}
+        {zoomRadius >= 3000 && (() => {
+          const cosmicLabels = [
+            { name: 'Milky Way', subtext: 'Our Galaxy', show: zoomRadius >= 3000 },
+            { name: 'Andromeda Galaxy', subtext: 'M31 · 2.5M ly', show: zoomRadius >= 50000 },
+            { name: 'Large Magellanic Cloud', subtext: 'LMC · 160k ly', show: zoomRadius >= 20000 },
+            { name: 'Small Magellanic Cloud', subtext: 'SMC · 200k ly', show: zoomRadius >= 20000 },
+            { name: 'Triangulum Galaxy', subtext: 'M33 · 2.7M ly', show: zoomRadius >= 80000 },
+          ].filter(l => l.show);
+          return (
+            <div className="absolute inset-0 pointer-events-none">
+              {cosmicLabels.map((l, i) => (
+                <div
+                  key={l.name}
+                  className="absolute"
+                  style={{
+                    left: `${18 + i * 0}%`,
+                    top: `${20 + i * 9}%`,
+                  }}
+                >
+                  <p className="text-[11px] font-heading font-semibold text-blue-200/70 whitespace-nowrap" style={{ textShadow: '0 0 8px rgba(100,150,255,0.5)' }}>{l.name}</p>
+                  <p className="text-[9px] font-body text-white/30">{l.subtext}</p>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Cosmic scale indicator */}
         <div className="absolute top-4 left-4 flex flex-col gap-1">
