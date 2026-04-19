@@ -86,7 +86,25 @@ function valueToThreeColor(gradient, value) {
   );
 }
 
-export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon', uiHidden = false, activeScientificLayers = [] }) {
+function getMoonPhaseFromDate(date) {
+  const knownNewMoon = new Date('2000-01-06T18:14:00Z');
+  const synodicMonth = 29.53058867;
+  const diffDays = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
+  return ((diffDays % synodicMonth) + synodicMonth) % synodicMonth / synodicMonth;
+}
+
+function getPhaseName(phase) {
+  if (phase < 0.03 || phase >= 0.97) return 'New Moon';
+  if (phase < 0.22) return 'Waxing Crescent';
+  if (phase < 0.28) return 'First Quarter';
+  if (phase < 0.47) return 'Waxing Gibbous';
+  if (phase < 0.53) return 'Full Moon';
+  if (phase < 0.72) return 'Waning Gibbous';
+  if (phase < 0.78) return 'Last Quarter';
+  return 'Waning Crescent';
+}
+
+export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon', uiHidden = false, activeScientificLayers = [], phaseDate = null }) {
   const containerRef = useRef(null);
   const sceneRef = useRef({});
   const [isLoading, setIsLoading] = useState(true);
@@ -97,6 +115,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
   // Refs exposed to overlay components
   const globeRotYRef = useRef(0);   // live Y rotation of globe (for compass)
   const sunLightRef = useRef(null); // live ref to Three.js directional light (for sun angle)
+  const phaseDateRef = useRef(phaseDate);
 
   // Guided tour
   const [tourActive, setTourActive] = useState(false);
@@ -509,8 +528,8 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       const zoomFactor = Math.max(0, (DEFAULT_CAMERA_Z - camera.position.z) / (DEFAULT_CAMERA_Z - MIN_ZOOM));
       material.bumpScale = 0.008 + zoomFactor * 0.04;
 
-      // Update sun position every 30 frames (~0.5s at 60fps) for smooth real-time lighting
-      if (frameCounter % 30 === 0 && sceneRef.current.updateSunPosition) {
+      // Update sun position every 30 frames — skip if phase override is active
+      if (frameCounter % 30 === 0 && sceneRef.current.updateSunPosition && !phaseDateRef.current) {
         sceneRef.current.updateSunPosition();
       }
 
@@ -557,6 +576,28 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
   }, []);
+
+  // ─── Phase date override: reposition sun light to match lunar phase ─────────
+  useEffect(() => {
+    phaseDateRef.current = phaseDate;
+    const light = sunLightRef.current;
+    if (!light) return;
+    if (!phaseDate) {
+      // Restore real-time sun position
+      if (sceneRef.current.updateSunPosition) sceneRef.current.updateSunPosition();
+      return;
+    }
+    // Calculate sun angle from phase: phase 0 = New Moon (sun behind moon from Earth),
+    // phase 0.5 = Full Moon (sun in front). Angle goes 0→2π over the cycle.
+    const phase = getMoonPhaseFromDate(phaseDate);
+    // Phase angle: 0=new (dark), 0.5=full (bright). Map to sun azimuth around moon.
+    const phaseAngle = phase * 2 * Math.PI;
+    const sunDist = 12;
+    const sunX = Math.cos(phaseAngle) * sunDist;
+    const sunZ = Math.sin(phaseAngle) * sunDist;
+    light.position.set(sunX, 1, sunZ);
+    light.intensity = phase < 0.03 || phase > 0.97 ? 0.5 : 4.5;
+  }, [phaseDate]);
 
   // ─── Rotate to selected marker ─────────────────────────────────────────────
   useEffect(() => {
@@ -749,6 +790,27 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
           Drag to rotate • Pinch/scroll to zoom • Tap markers
         </div>
       )}
+
+      {/* Phase date badge — shown when a date is selected from Moon Cycle Calendar */}
+      {phaseDate && (() => {
+        const phase = getMoonPhaseFromDate(phaseDate);
+        const illumination = Math.round(((1 - Math.cos(phase * 2 * Math.PI)) / 2) * 100);
+        const phaseName = getPhaseName(phase);
+        return (
+          <div className="absolute top-4 right-4 z-50 flex flex-col items-end gap-1 pointer-events-none">
+            <div className="px-3 py-2 rounded-xl border border-primary/40 bg-card/90 backdrop-blur-xl shadow-lg flex items-center gap-2.5">
+              <span className="text-lg">{illumination === 100 ? '🌕' : illumination === 0 ? '🌑' : phase < 0.5 ? '🌒' : '🌘'}</span>
+              <div>
+                <p className="text-[10px] text-muted-foreground font-body">
+                  {phaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+                <p className="text-xs font-heading font-semibold text-foreground">{phaseName}</p>
+                <p className="text-[10px] font-body" style={{ color: '#e2c97e' }}>{illumination}% illuminated</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

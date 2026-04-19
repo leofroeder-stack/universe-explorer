@@ -130,6 +130,8 @@ export default function MoonExplorer() {
     setMeasurePointB(null);
   }, []);
 
+  const [selectedPhaseDate, setSelectedPhaseDate] = useState(null);
+
   // Moon cycle: jump timeline to date (set time filter to that year)
   const handleJumpToDate = useCallback((date) => {
     const year = date.getFullYear();
@@ -140,7 +142,8 @@ export default function MoonExplorer() {
     });
     setTimeFilteredMarkers(filtered);
     setSliderYear(year);
-    triggerViewTransition('2d');
+    setSelectedPhaseDate(date);
+    triggerViewTransition('3d'); // stay on 3D to show the phase
   }, [layerFilteredMarkers, triggerViewTransition]);
 
   const handleTabChange = (v) => {
@@ -338,6 +341,7 @@ export default function MoonExplorer() {
                   planet={planet}
                   uiHidden={uiHidden}
                   activeScientificLayers={activeScientificLayers}
+                  phaseDate={planet === 'moon' ? selectedPhaseDate : null}
                 />
               </motion.div>
             ) : (
