@@ -20,6 +20,8 @@ import { useFeatureFlag } from '@/components/FeatureFlagProvider';
 import { useAppSettings } from '@/components/AppSettingsProvider';
 import SpaceAudioPlayer from '../components/moon/SpaceAudioPlayer';
 import LunarEventAlert from '../components/moon/LunarEventAlert';
+import MobileTabBar from '../components/moon/MobileTabBar';
+import MobileLayersSheet from '../components/moon/MobileLayersSheet';
 
 export default function MoonExplorer() {
   const navigate = useNavigate();
@@ -131,6 +133,7 @@ export default function MoonExplorer() {
   }, []);
 
   const [selectedPhaseDate, setSelectedPhaseDate] = useState(null);
+  const [mobileLayersOpen, setMobileLayersOpen] = useState(false);
 
   // Moon cycle: jump timeline to date (set time filter to that year)
   const handleJumpToDate = useCallback((date) => {
@@ -151,9 +154,31 @@ export default function MoonExplorer() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="h-screen flex flex-col bg-background overflow-hidden pb-[56px] lg:pb-0">
       {/* Lunar Event Alert — floating popup */}
       {planet === 'moon' && !uiHidden && <LunarEventAlert />}
+
+      {/* Mobile bottom tab bar */}
+      {!uiHidden && (
+        <MobileTabBar
+          viewMode={viewMode}
+          onViewModeChange={(v) => { if (v !== viewMode) triggerViewTransition(v); }}
+          planet={planet}
+          onPlanetChange={(key) => {
+            if (key !== planet) {
+              setPlanet(key);
+              setSelectedMarker(null);
+              setTimeFilteredMarkers(null);
+              setSliderYear(null);
+            }
+          }}
+          measureActive={measureActive}
+          onToggleMeasure={() => { setMeasureActive(a => !a); handleMeasureClear(); }}
+          onOpenMoonCycle={() => setMoonCycleOpen(true)}
+          onOpenAR={() => setArOpen(true)}
+          onOpenLayers={() => setMobileLayersOpen(true)}
+        />
+      )}
 
       {/* Header */}
       <header className={`flex-shrink-0 border-b border-border bg-card/50 backdrop-blur-xl transition-all duration-300 ${uiHidden ? 'hidden' : ''}`}>
@@ -474,6 +499,16 @@ export default function MoonExplorer() {
 
           {/* Space Audio Player */}
           {!uiHidden && !isHidden('hide_audio_player') && <SpaceAudioPlayer />}
+
+          {/* Mobile Layers Sheet */}
+          <MobileLayersSheet
+            isOpen={mobileLayersOpen}
+            onClose={() => setMobileLayersOpen(false)}
+            activeLayers={activeLayers}
+            onToggleLayer={toggleLayer}
+            activeScientificLayers={activeScientificLayers}
+            onToggleScientificLayer={toggleScientificLayer}
+          />
 
           {/* Stats bar */}
           {!uiHidden && !isHidden('hide_stats_bar') && (
