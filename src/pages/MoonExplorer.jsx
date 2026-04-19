@@ -159,7 +159,7 @@ export default function MoonExplorer() {
       <header className={`flex-shrink-0 border-b border-border bg-card/50 backdrop-blur-xl transition-all duration-300 ${uiHidden ? 'hidden' : ''}`}>
 
         {/* Row 1: Brand + Planet + View Toggle + Nav */}
-        <div className="px-4 md:px-6 py-2.5 flex items-center justify-between gap-3 border-b border-border/40">
+        <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-3 border-b border-border/40">
           {/* Left: mobile drawer + logo */}
           <div className="flex items-center gap-3">
             <MobileMenuDrawer
@@ -212,13 +212,13 @@ export default function MoonExplorer() {
                       setSliderYear(null);
                     }
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body font-medium transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-body font-medium transition-all min-w-[64px] justify-center ${
                     planet === key
                       ? 'bg-card text-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  <span>{emoji}</span>
+                  <span className="text-base">{emoji}</span>
                   <span className="hidden sm:inline">{label}</span>
                 </button>
               ))}
@@ -237,12 +237,12 @@ export default function MoonExplorer() {
             )}
             {!isHidden('hide_view_toggle') && (
               <Tabs value={viewMode} onValueChange={handleTabChange}>
-                <TabsList className="bg-secondary h-8">
-                  <TabsTrigger value="3d" className="gap-1.5 text-xs h-6 px-2.5">
-                    <Globe className="w-3 h-3" /> 3D
+                <TabsList className="bg-secondary h-10">
+                  <TabsTrigger value="3d" className="gap-1.5 text-sm h-8 px-4 min-w-[52px]">
+                    <Globe className="w-4 h-4" /> 3D
                   </TabsTrigger>
-                  <TabsTrigger value="2d" className="gap-1.5 text-xs h-6 px-2.5">
-                    <Map className="w-3 h-3" /> 2D
+                  <TabsTrigger value="2d" className="gap-1.5 text-sm h-8 px-4 min-w-[52px]">
+                    <Map className="w-4 h-4" /> 2D
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
