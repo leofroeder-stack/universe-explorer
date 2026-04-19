@@ -154,7 +154,7 @@ export default function MoonExplorer() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden pb-[56px] lg:pb-0">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Lunar Event Alert — floating popup */}
       {planet === 'moon' && !uiHidden && <LunarEventAlert />}
 
@@ -180,8 +180,8 @@ export default function MoonExplorer() {
         />
       )}
 
-      {/* Header */}
-      <header className={`flex-shrink-0 border-b border-border bg-card/50 backdrop-blur-xl transition-all duration-300 ${uiHidden ? 'hidden' : ''}`}>
+      {/* Header — sticky at top */}
+      <header className={`flex-shrink-0 sticky top-0 z-[500] border-b border-border bg-card/80 backdrop-blur-xl transition-all duration-300 ${uiHidden ? 'hidden' : ''}`}>
 
         {/* Row 1: Brand + Planet + View Toggle + Nav */}
         <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-3 border-b border-border/40">
@@ -335,7 +335,7 @@ export default function MoonExplorer() {
       </header>
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden pb-[56px] lg:pb-0">
         {/* Retractable Sidebar */}
         <aside className={`hidden lg:flex flex-col border-r border-border bg-card/30 flex-shrink-0 overflow-hidden transition-all duration-300 ${uiHidden || isHidden('hide_sidebar') ? '!hidden' : ''} ${sidebarOpen ? 'w-72' : 'w-0'}`}>
           <Sidebar
