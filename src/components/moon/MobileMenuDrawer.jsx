@@ -35,9 +35,9 @@ export default function MobileMenuDrawer({
         <Menu className="w-5 h-5 text-foreground" />
       </button>
 
-      <AnimatePresence>
-        {open && createPortal(
-          <>
+      {createPortal(
+        <AnimatePresence>
+          {open && <>
             {/* Backdrop */}
             <motion.div
               key="backdrop"
@@ -182,10 +182,10 @@ export default function MobileMenuDrawer({
                 </div>
               </div>
             </motion.div>
-          </>,
-          document.body
-        )}
-      </AnimatePresence>
+          </>}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }
