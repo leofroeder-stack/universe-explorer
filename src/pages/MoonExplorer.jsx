@@ -158,7 +158,10 @@ export default function MoonExplorer() {
 
       {/* Header */}
       <header className={`flex-shrink-0 border-b border-border bg-card/50 backdrop-blur-xl transition-all duration-300 ${uiHidden ? 'hidden' : ''}`}>
-        <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-4">
+
+        {/* Row 1: Brand + Planet + View Toggle + Nav */}
+        <div className="px-4 md:px-6 py-2.5 flex items-center justify-between gap-3 border-b border-border/40">
+          {/* Left: mobile drawer + logo */}
           <div className="flex items-center gap-3">
             <MobileMenuDrawer
               markers={displayedMarkers}
@@ -182,20 +185,20 @@ export default function MoonExplorer() {
               onOpenMoonCycle={() => setMoonCycleOpen(true)}
               onOpenAR={() => setArOpen(true)}
             />
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Globe className="w-5 h-5 text-primary" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Globe className="w-4 h-4 text-primary" />
             </div>
-            <div>
-              <h1 className="font-heading font-bold text-lg leading-tight">Universe Explorer</h1>
-              <p className="text-[11px] text-muted-foreground font-body">
-                {planet === 'mars' ? 'Interactive Mars Explorer' : 'Interactive Moon Explorer'}
+            <div className="hidden sm:block">
+              <h1 className="font-heading font-bold text-base leading-tight">Universe Explorer</h1>
+              <p className="text-[10px] text-muted-foreground font-body">
+                {planet === 'mars' ? 'Mars' : 'Moon'} · Interactive 3D Atlas
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Planet Selector */}
-            {!isHidden('hide_planet_selector') && <div className="flex items-center gap-1 bg-secondary rounded-xl p-1 border border-border">
+          {/* Center: Planet Selector */}
+          {!isHidden('hide_planet_selector') && (
+            <div className="flex items-center gap-1 bg-secondary rounded-xl p-1 border border-border">
               {[
                 { key: 'moon', emoji: '🌕', label: 'Moon' },
                 { key: 'mars', emoji: '🔴', label: 'Mars' },
@@ -220,48 +223,11 @@ export default function MoonExplorer() {
                   <span className="hidden sm:inline">{label}</span>
                 </button>
               ))}
-            </div>}
+            </div>
+          )}
 
-            {/* Moon Cycle button — moon only */}
-            {planet === 'moon' && isEnabled('moon_cycle') && !isHidden('hide_moon_cycle_button') && (
-              <button
-                onClick={() => setMoonCycleOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all"
-                title="Moon Cycle Calendar"
-              >
-                <Moon className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Moon Cycle</span>
-              </button>
-            )}
-
-            {/* Measure button */}
-            {isEnabled('measurements') && !isHidden('hide_measure_button') && (
-              <button
-                onClick={() => { setMeasureActive(a => !a); handleMeasureClear(); }}
-                title="Measurement Tool"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border transition-all ${
-                  measureActive
-                    ? 'bg-amber-500/20 border-amber-400/60 text-amber-400'
-                    : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
-                }`}
-              >
-                <Ruler className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Measure</span>
-              </button>
-            )}
-
-            {/* AR View button — moon only */}
-            {planet === 'moon' && isEnabled('ar_view') && !isHidden('hide_ar_button') && (
-              <button
-                onClick={() => setArOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-body font-medium border border-primary/40 text-primary hover:bg-primary/10 transition-all"
-                title="AR View"
-              >
-                <Scan className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">AR View</span>
-              </button>
-            )}
-
+          {/* Right: View toggle + Solar System link */}
+          <div className="flex items-center gap-2">
             {!isHidden('hide_solar_system_link') && (
               <button
                 onClick={() => navigate('/solar-system')}
@@ -270,27 +236,74 @@ export default function MoonExplorer() {
                 ☀️ <span>Solar System</span>
               </button>
             )}
-            {!isHidden('hide_layer_controls') && (
-              <div className="hidden md:block">
-                <LayerControls
-                  activeLayers={activeLayers}
-                  onToggleLayer={toggleLayer}
-                  activeScientificLayers={activeScientificLayers}
-                  onToggleScientificLayer={toggleScientificLayer}
-                />
-              </div>
-            )}
             {!isHidden('hide_view_toggle') && (
               <Tabs value={viewMode} onValueChange={handleTabChange}>
-                <TabsList className="bg-secondary">
-                  <TabsTrigger value="3d" className="gap-1.5 text-xs">
-                    <Globe className="w-3.5 h-3.5" /> 3D Globe
+                <TabsList className="bg-secondary h-8">
+                  <TabsTrigger value="3d" className="gap-1.5 text-xs h-6 px-2.5">
+                    <Globe className="w-3 h-3" /> 3D
                   </TabsTrigger>
-                  <TabsTrigger value="2d" className="gap-1.5 text-xs">
-                    <Map className="w-3.5 h-3.5" /> 2D Map
+                  <TabsTrigger value="2d" className="gap-1.5 text-xs h-6 px-2.5">
+                    <Map className="w-3 h-3" /> 2D
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: Tools bar */}
+        <div className="hidden md:flex items-center gap-1 px-4 md:px-6 py-1.5 overflow-x-auto">
+
+          {/* Layer controls group */}
+          {!isHidden('hide_layer_controls') && (
+            <>
+              <LayerControls
+                activeLayers={activeLayers}
+                onToggleLayer={toggleLayer}
+                activeScientificLayers={activeScientificLayers}
+                onToggleScientificLayer={toggleScientificLayer}
+              />
+              <div className="w-px h-5 bg-border mx-1 flex-shrink-0" />
+            </>
+          )}
+
+          {/* Tool buttons */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {planet === 'moon' && isEnabled('moon_cycle') && !isHidden('hide_moon_cycle_button') && (
+              <button
+                onClick={() => setMoonCycleOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-body font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-secondary/60 hover:border-foreground/20 transition-all"
+                title="Moon Cycle Calendar"
+              >
+                <Moon className="w-3.5 h-3.5" />
+                <span>Moon Cycle</span>
+              </button>
+            )}
+
+            {isEnabled('measurements') && !isHidden('hide_measure_button') && (
+              <button
+                onClick={() => { setMeasureActive(a => !a); handleMeasureClear(); }}
+                title="Measurement Tool"
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-body font-medium border transition-all ${
+                  measureActive
+                    ? 'bg-amber-500/20 border-amber-400/60 text-amber-400'
+                    : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/60 hover:border-foreground/20'
+                }`}
+              >
+                <Ruler className="w-3.5 h-3.5" />
+                <span>Measure</span>
+              </button>
+            )}
+
+            {planet === 'moon' && isEnabled('ar_view') && !isHidden('hide_ar_button') && (
+              <button
+                onClick={() => setArOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-body font-medium border border-primary/40 text-primary hover:bg-primary/10 transition-all"
+                title="AR View"
+              >
+                <Scan className="w-3.5 h-3.5" />
+                <span>AR View</span>
+              </button>
             )}
           </div>
         </div>
