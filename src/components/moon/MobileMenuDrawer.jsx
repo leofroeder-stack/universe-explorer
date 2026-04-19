@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Menu, X, Globe, Map, Moon, Ruler, Scan } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -35,12 +36,12 @@ export default function MobileMenuDrawer({
       </button>
 
       <AnimatePresence>
-        {open && (
+        {open && createPortal(
           <>
             {/* Backdrop */}
             <motion.div
               key="backdrop"
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998] lg:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -50,7 +51,7 @@ export default function MobileMenuDrawer({
             {/* Drawer */}
             <motion.div
               key="drawer"
-              className="fixed left-0 top-0 w-[85vw] max-w-sm bg-card border-r border-border z-[9999] flex flex-col lg:hidden"
+              className="fixed left-0 top-0 w-[85vw] max-w-sm bg-card border-r border-border z-[9999] flex flex-col"
               style={{ height: '100dvh' }}
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
@@ -181,7 +182,8 @@ export default function MobileMenuDrawer({
                 </div>
               </div>
             </motion.div>
-          </>
+          </>,
+          document.body
         )}
       </AnimatePresence>
     </>
