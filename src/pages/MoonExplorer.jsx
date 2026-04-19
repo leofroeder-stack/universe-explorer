@@ -149,12 +149,8 @@ export default function MoonExplorer() {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* Lunar Event Alert */}
-      {planet === 'moon' && !uiHidden && (
-        <div className="flex-shrink-0 px-4 md:px-6 py-3 border-b border-border bg-background/40 backdrop-blur-sm">
-          <LunarEventAlert />
-        </div>
-      )}
+      {/* Lunar Event Alert — floating popup */}
+      {planet === 'moon' && !uiHidden && <LunarEventAlert />}
 
       {/* Header */}
       <header className={`flex-shrink-0 border-b border-border bg-card/50 backdrop-blur-xl transition-all duration-300 ${uiHidden ? 'hidden' : ''}`}>
