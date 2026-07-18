@@ -56,6 +56,12 @@ const AUTO_SWITCH_THRESHOLD = 1.7;
 const IDLE_RESTART_MS = 5000; // resume auto-rotation after 5s of no interaction
 
 const PLANET_TEXTURES = {
+  moon: '/textures/moon.jpg',
+  mars: '/textures/mars.jpg',
+};
+
+// Absolute URLs used only for the proxy fallback if the local file fails
+const PLANET_TEXTURE_FALLBACKS = {
   moon: 'https://www.solarsystemscope.com/textures/download/2k_moon.jpg',
   mars: 'https://www.solarsystemscope.com/textures/download/2k_mars.jpg',
 };
@@ -298,18 +304,34 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       metalness: 0.0,
     });
 
-    // Fetch texture via backend proxy to avoid CORS/hotlink issues
-    fetchTextureDataUrl(textureUrl).then((dataUrl) => {
-      if (!dataUrl) { setIsLoading(false); return; }
-      textureLoader.load(dataUrl, (tex) => {
+    // Load texture from bundled local file (works offline; browser caches it)
+    textureLoader.load(
+      textureUrl,
+      (tex) => {
         tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
         material.map = tex;
         material.bumpMap = tex;
         material.bumpScale = 0.012;
         material.needsUpdate = true;
         setIsLoading(false);
-      });
-    }).catch(() => setIsLoading(false));
+      },
+      undefined,
+      (err) => {
+        console.warn('Local texture failed, trying proxy fallback', err);
+        const fallbackUrl = PLANET_TEXTURE_FALLBACKS[planet] || PLANET_TEXTURE_FALLBACKS.moon;
+        fetchTextureDataUrl(fallbackUrl).then((dataUrl) => {
+          if (!dataUrl) { setIsLoading(false); return; }
+          textureLoader.load(dataUrl, (tex) => {
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            material.map = tex;
+            material.bumpMap = tex;
+            material.bumpScale = 0.012;
+            material.needsUpdate = true;
+            setIsLoading(false);
+          }, undefined, () => setIsLoading(false));
+        }).catch(() => setIsLoading(false));
+      }
+    );
 
     const moon = new THREE.Mesh(geometry, material);
     moon.receiveShadow = true;

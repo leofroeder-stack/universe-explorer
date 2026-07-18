@@ -8,7 +8,7 @@ Deno.serve(async (req) => {
 
   const response = await fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; TextureProxy/1.0)',
+      'User-Agent': 'Mozilla/5.0',
       'Accept': 'image/*',
     },
   });
@@ -18,6 +18,11 @@ Deno.serve(async (req) => {
   }
 
   const contentType = response.headers.get('content-type') || 'image/jpeg';
+
+  // Reject HTML (captcha/redirect) responses instead of encoding them as fake images
+  if (!contentType.startsWith('image/')) {
+    return Response.json({ error: `Non-image content-type: ${contentType}` }, { status: 502 });
+  }
   const arrayBuffer = await response.arrayBuffer();
   const uint8 = new Uint8Array(arrayBuffer);
 
