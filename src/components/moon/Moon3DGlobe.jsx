@@ -11,6 +11,8 @@ import { useAppSettings } from '@/components/AppSettingsProvider';
 import { SCIENTIFIC_LAYER_META } from './scientificLayers';
 import { ScientificLayerLegend } from './ScientificLayerOverlay';
 import MoonPhaseDisplay from './MoonPhaseDisplay';
+import setupHeadsetVR from '@/components/vr/setupHeadsetVR';
+import HeadsetVRButton from '@/components/vr/HeadsetVRButton';
 
 // In-memory cache (survives re-renders in same session)
 const memoryCache = {};
@@ -248,6 +250,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
+    const cleanupVR = setupHeadsetVR(renderer, scene, camera);
 
     const ambientLight = new THREE.AmbientLight(0x221e3b, 1.2);
     scene.add(ambientLight);
@@ -524,13 +527,11 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     container.addEventListener('touchend', onTouchEnd, { passive: true });
     container.addEventListener('wheel', onWheel, { passive: false });
 
-    let animId;
     let frameCounter = 0;
     const animate = () => {
-      animId = requestAnimationFrame(animate);
       const vel = sceneRef.current.rotationVelocity;
 
-      if (!isDragging && !animatingToMarkerRef.current) {
+      if (!renderer.xr.isPresenting && !isDragging && !animatingToMarkerRef.current) {
         if (autoRotatingRef.current) {
           // Smooth auto-rotation
           vel.x *= 0.95;
@@ -562,7 +563,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       frameCounter++;
 
       // Auto-switch to 2D when zoomed in very close
-      if (camera.position.z <= AUTO_SWITCH_THRESHOLD && !autoSwitchTriggered) {
+      if (!renderer.xr.isPresenting && camera.position.z <= AUTO_SWITCH_THRESHOLD && !autoSwitchTriggered) {
         autoSwitchTriggered = true;
         if (onAutoSwitch2D) onAutoSwitch2D();
       }
@@ -573,7 +574,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
       globeRotYRef.current = moon.rotation.y;
       renderer.render(scene, camera);
     };
-    animate();
+    renderer.setAnimationLoop(animate);
 
     const onResize = () => {
       const w = container.clientWidth, h = container.clientHeight;
@@ -584,7 +585,8 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     window.addEventListener('resize', onResize);
 
     return () => {
-      cancelAnimationFrame(animId);
+      renderer.setAnimationLoop(null);
+      cleanupVR();
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       window.removeEventListener('resize', onResize);
       container.removeEventListener('mousedown', onMouseDown);
@@ -752,6 +754,8 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
           </div>
         </div>
       )}
+
+      {!uiHidden && <div className="absolute top-16 right-4 z-20"><HeadsetVRButton sceneRef={sceneRef} /></div>}
 
       {/* Zoom, Reset & Phase Controls */}
       {!uiHidden && <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">

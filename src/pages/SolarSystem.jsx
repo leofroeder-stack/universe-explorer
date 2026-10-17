@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, X, ExternalLink, Cpu, Zap } from 'lucide-react';
 import { PLANET_BODIES } from '../components/solar/solarData';
+import setupHeadsetVR from '@/components/vr/setupHeadsetVR';
+import HeadsetVRButton from '@/components/vr/HeadsetVRButton';
 
 const PLANETS = [
   {
@@ -168,6 +170,7 @@ export default function SolarSystem() {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     container.appendChild(renderer.domElement);
+    const cleanupVR = setupHeadsetVR(renderer, scene, camera);
     sceneRef.current.renderer = renderer;
 
     // ── Near stars (visible at solar system scale) ──────────────────────────
@@ -612,9 +615,7 @@ export default function SolarSystem() {
 
     sceneRef.current = { scene, camera, renderer, planetMeshes };
 
-    let animId;
     const animate = () => {
-      animId = requestAnimationFrame(animate);
       // Fade in Milky Way stars as camera pulls back
       const mwVisibility = Math.min(1, Math.max(0, (radius - 800) / 3000));
       mwMat.opacity = mwVisibility * 0.6;
@@ -660,7 +661,7 @@ export default function SolarSystem() {
 
       renderer.render(scene, camera);
     };
-    animate();
+    renderer.setAnimationLoop(animate);
 
     const onResize = () => {
       const w = container.clientWidth, h = container.clientHeight;
@@ -671,7 +672,8 @@ export default function SolarSystem() {
     window.addEventListener('resize', onResize);
 
     return () => {
-      cancelAnimationFrame(animId);
+      renderer.setAnimationLoop(null);
+      cleanupVR();
       window.removeEventListener('resize', onResize);
       container.removeEventListener('mousedown', onMouseDown);
       container.removeEventListener('mousemove', onMouseMove);
@@ -705,6 +707,7 @@ export default function SolarSystem() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <HeadsetVRButton sceneRef={sceneRef} />
           {/* WebGL Quality Toggle */}
           <button
             onClick={handleToggleQuality}

@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { BODY_COLORS } from './solarData';
 import { base44 } from '@/api/base44Client';
+import setupHeadsetVR from '@/components/vr/setupHeadsetVR';
+import HeadsetVRButton from '@/components/vr/HeadsetVRButton';
 
 // Cache fetched textures (dataUrl) by URL to avoid re-downloading
 const textureCache = {};
@@ -82,6 +84,7 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
     renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
+    const cleanupVR = setupHeadsetVR(renderer, scene, camera);
 
     scene.add(new THREE.AmbientLight(0x334466, 1.2));
     const sun = new THREE.DirectionalLight(0xfff4e0, 5.5);
@@ -217,11 +220,9 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
     container.addEventListener('touchmove', onTM, { passive: false });
     container.addEventListener('touchend', onTE, { passive: true });
 
-    let animId;
     const animate = () => {
-      animId = requestAnimationFrame(animate);
       const vel = sceneRef.current.rotVel;
-      if (!drag) {
+      if (!renderer.xr.isPresenting && !drag) {
         if (autoRotRef.current) {
           vel.y = vel.y * 0.95 + 0.0008 * 0.05;
           vel.x *= 0.95;
@@ -233,7 +234,7 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
       }
       renderer.render(scene, camera);
     };
-    animate();
+    renderer.setAnimationLoop(animate);
 
     const onResize = () => {
       const nw = container.clientWidth, nh = container.clientHeight;
@@ -243,7 +244,8 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
     window.addEventListener('resize', onResize);
 
     return () => {
-      cancelAnimationFrame(animId);
+      renderer.setAnimationLoop(null);
+      cleanupVR();
       if (idleRef.current) clearTimeout(idleRef.current);
       window.removeEventListener('resize', onResize);
       container.removeEventListener('mousedown', onMD);
@@ -322,6 +324,7 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+      <div className="absolute top-4 left-4 z-20"><HeadsetVRButton sceneRef={sceneRef} /></div>
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/50">
           <div className="w-10 h-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
