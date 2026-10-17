@@ -4,13 +4,15 @@ export default function VRPointer(renderer, rig, panel, quickNav, getOptions, ge
   const raycaster = new THREE.Raycaster(), rotation = new THREE.Matrix4(), worldPos = new THREE.Vector3();
   const resolveItem = obj => { let cur = obj; while (cur && !cur.userData?.id && !cur.userData?.name && !cur.userData?.planet) cur = cur.parent; return cur ? (cur.userData.planet || cur.userData) : null; };
   const syncController = (controller, source, frame) => {
-    const refSpace = renderer.xr.getReferenceSpace(), space = source?.targetRaySpace || source?.gripSpace;
-    const pose = frame && refSpace && space ? frame.getPose(space, refSpace) : null;
-    if (!pose) return false;
-    controller.matrix.fromArray(pose.transform.matrix);
-    controller.matrix.decompose(controller.position, controller.rotation, controller.scale);
-    controller.visible = true; controller.userData.source = source;
-    return true;
+    try {
+      const refSpace = renderer.xr.getReferenceSpace(), space = source?.targetRaySpace || source?.gripSpace;
+      const pose = frame && refSpace && space ? frame.getPose(space, refSpace) : null;
+      if (!pose) return false;
+      controller.matrix.fromArray(pose.transform.matrix);
+      controller.matrix.decompose(controller.position, controller.rotation, controller.scale);
+      controller.visible = true; controller.userData.source = source;
+      return true;
+    } catch { return false; }
   };
   const cast = controller => {
     rig.parent?.updateMatrixWorld(true); rig.updateWorldMatrix(true, true);

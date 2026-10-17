@@ -63,17 +63,7 @@ export const AuthProvider = ({ children }) => {
               type: 'user_not_registered',
               message: 'User not registered for this app'
             });
-          } else {
-            setAuthError({
-              type: reason,
-              message: appError.message
-            });
           }
-        } else {
-          setAuthError({
-            type: 'unknown',
-            message: appError.message || 'Failed to load app'
-          });
         }
         setIsLoadingPublicSettings(false);
         setIsLoadingAuth(false);
@@ -104,13 +94,8 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       setAuthChecked(true);
       
-      // If user auth fails, it might be an expired token
-      if (error.status === 401 || error.status === 403) {
-        setAuthError({
-          type: 'auth_required',
-          message: 'Authentication required'
-        });
-      }
+      // Clear expired token so public apps still open cleanly
+      try { base44.auth.logout(); } catch {}
     }
   };
 

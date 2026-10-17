@@ -9,15 +9,18 @@ export function AppSettingsProvider({ children }) {
   useEffect(() => {
     base44.entities.AppSettings.list().then(setSettings).catch(() => {});
 
-    const unsub = base44.entities.AppSettings.subscribe((event) => {
-      setSettings(prev => {
-        if (event.type === 'create') return [...prev, event.data];
-        if (event.type === 'update') return prev.map(s => s.id === event.id ? event.data : s);
-        if (event.type === 'delete') return prev.filter(s => s.id !== event.id);
-        return prev;
+    let unsub;
+    try {
+      unsub = base44.entities.AppSettings.subscribe((event) => {
+        setSettings(prev => {
+          if (event.type === 'create') return [...prev, event.data];
+          if (event.type === 'update') return prev.map(s => s.id === event.id ? event.data : s);
+          if (event.type === 'delete') return prev.filter(s => s.id !== event.id);
+          return prev;
+        });
       });
-    });
-    return unsub;
+    } catch {}
+    return () => { if (typeof unsub === 'function') unsub(); };
   }, []);
 
   const isHidden = (key) => {

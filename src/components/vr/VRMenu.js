@@ -49,7 +49,7 @@ export default function VRMenu(panel, motion, getOptions, exit) {
       const destination = selected?.destination || selected?.name?.toLowerCase();
       if (options.destinations?.some(entry => entry.key === destination)) rows.unshift(row(`Explore ${selected.name}`, () => { options.selectDestination(destination); back(); }));
     }
-    const maxPerPage = screen === 'destinations' ? 12 : 9;
+    const maxPerPage = 9;
     const pages = Math.max(1, Math.ceil(rows.length / maxPerPage)); page = Math.min(page, pages - 1);
     if (rows.length > maxPerPage) {
       rows = rows.slice(page * maxPerPage, page * maxPerPage + maxPerPage);

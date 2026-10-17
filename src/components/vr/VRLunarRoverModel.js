@@ -19,9 +19,8 @@ export default function VRLunarRoverModel() {
   dish.rotation.x = Math.PI * 0.75; dish.position.set(-0.14, 0.48, -0.15); root.add(dish);
   const camHead = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.09), metal);
   camHead.position.set(0.14, 0.32, -0.22); root.add(camHead);
-  const beam = new THREE.SpotLight(0xfffbeb, 3.5, 14, 0.55, 0.5);
-  beam.position.set(0, 0.26, -0.35); beam.target.position.set(0, -0.2, -4);
-  root.add(beam, beam.target);
+  const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.03, 0.03), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+  lamp.position.set(0, 0.25, -0.31); root.add(lamp);
   const wheels = [[-0.26, -0.26], [0.26, -0.26], [-0.26, 0.26], [0.26, 0.26]].map(([x, z], i) => {
     const pivot = new THREE.Group(); pivot.position.set(x, 0.11, z);
     const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.07, 18), dark);

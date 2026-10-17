@@ -241,8 +241,8 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    const width = container.clientWidth || window.innerWidth || 800;
+    const height = container.clientHeight || window.innerHeight || 600;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
@@ -581,17 +581,21 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     renderer.setAnimationLoop(animate);
 
     const onResize = () => {
-      const w = container.clientWidth, h = container.clientHeight;
+      const w = container.clientWidth || window.innerWidth || 800;
+      const h = container.clientHeight || window.innerHeight || 600;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
     window.addEventListener('resize', onResize);
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onResize) : null;
+    resizeObserver?.observe(container);
 
     return () => {
       renderer.setAnimationLoop(null);
       cleanupVR();
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      resizeObserver?.disconnect();
       window.removeEventListener('resize', onResize);
       container.removeEventListener('mousedown', onMouseDown);
       container.removeEventListener('mousemove', onMouseMove);

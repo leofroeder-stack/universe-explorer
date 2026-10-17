@@ -24,11 +24,14 @@ export function FeatureFlagProvider({ children }) {
     };
 
     loadFlags();
-    const unsubscribe = base44.entities.FeatureFlag.subscribe((event) => {
-      loadFlags();
-    });
+    let unsubscribe;
+    try {
+      unsubscribe = base44.entities.FeatureFlag.subscribe(() => {
+        loadFlags();
+      });
+    } catch {}
 
-    return unsubscribe;
+    return () => { if (typeof unsubscribe === 'function') unsubscribe(); };
   }, []);
 
   const isEnabled = (featureKey) => flags[featureKey] === true;

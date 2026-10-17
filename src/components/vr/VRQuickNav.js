@@ -15,7 +15,8 @@ export default function VRQuickNav(onSelectDestination, onToggleVoice) {
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.77), new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true, toneMapped: false, depthTest: false, depthWrite: false }));
   mesh.renderOrder = 100; mesh.position.set(-0.78, -0.15, -1.65); mesh.rotation.y = 0.25;
   const styles = window.getComputedStyle(document.documentElement);
-  const color = name => `hsl(${styles.getPropertyValue(name).trim()})`;
+  const FALLBACKS = { '--card': '#0d1322', '--primary': '#3c83f6', '--primary-foreground': '#080c16', '--secondary': '#1c2536', '--accent': '#a855f7', '--foreground': '#f1f5f9', '--muted-foreground': '#7588a3' };
+  const color = name => { const v = styles.getPropertyValue(name).trim(); return v ? `hsl(${v.replace(/\s+/g, ', ')})` : (FALLBACKS[name] || '#ffffff'); };
   let hidden = false, activeKey = 'moon', voiceOn = false, statusText = 'Press X • Voice or Hand Gesture', hovered = null;
   const hitAt = uv => {
     if (!uv) return null;

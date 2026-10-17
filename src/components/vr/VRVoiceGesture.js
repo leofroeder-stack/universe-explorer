@@ -21,11 +21,11 @@ export default function VRVoiceGesture(renderer, quickNav, onSelectDestination) 
   };
   const toggleVoice = () => {
     if (!Speech) { quickNav.setState({ voiceOn: false, statusText: 'Voice not supported in this browser' }); return; }
-    if (voiceOn) { voiceOn = false; recognition?.stop(); quickNav.setState({ voiceOn: false, statusText: 'Voice commands paused' }); return; }
+    if (voiceOn) { voiceOn = false; try { recognition?.stop(); } catch {} quickNav.setState({ voiceOn: false, statusText: 'Voice commands paused' }); return; }
     recognition = new Speech(); recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-US';
     recognition.onresult = e => { const res = e.results[e.results.length - 1]; if (res?.[0]?.transcript) applyTranscript(res[0].transcript); };
     recognition.onend = () => { if (voiceOn) try { recognition.start(); } catch {} };
-    try { recognition.start(); voiceOn = true; quickNav.setState({ voiceOn: true, statusText: 'Listening: Say Solar System, Moon, or Mars' }); }
+    try { recognition.start(); voiceOn = true; quickNav.setState({ voiceOn: true, statusText: 'Listening: Say Solar System, Moon, Mars, Rover' }); }
     catch { quickNav.setState({ voiceOn: false, statusText: 'Click Voice button to allow microphone' }); }
   };
   const onKeyDown = e => { if (e.key === 'x' || e.key === 'X') quickNav.toggleHidden(); };
@@ -36,20 +36,24 @@ export default function VRVoiceGesture(renderer, quickNav, onSelectDestination) 
       const frame = renderer.xr.getFrame(), refSpace = renderer.xr.getReferenceSpace();
       const sources = Array.from(renderer.xr.getSession()?.inputSources || []);
       sources.forEach(source => {
-        if (source.hand && frame && refSpace) {
-          const wPose = frame.getJointPose(source.hand.get('wrist'), refSpace);
-          if (!wPose) return;
-          wrist.set(wPose.transform.position.x, wPose.transform.position.y, wPose.transform.position.z);
-          const tips = ['index-finger-tip', 'middle-finger-tip', 'ring-finger-tip', 'pinky-finger-tip'];
-          const extended = tips.filter(name => {
-            const p = frame.getJointPose(source.hand.get(name), refSpace);
-            return p && tip.set(p.transform.position.x, p.transform.position.y, p.transform.position.z).distanceTo(wrist) > 0.12;
-          }).length;
-          const key = extended === 1 ? 'solar-system' : extended === 2 ? 'moon' : extended === 3 ? 'mars' : extended === 4 ? 'lunar-rover' : null;
-          if (key && gestureHold.key === key) {
-            gestureHold.time += delta;
-            if (gestureHold.time > 0.55) { gestureHold.time = 0; triggerNav(key, `Hand gesture (${extended} fingers): ${key}`); }
-          } else gestureHold = { key, time: 0 };
+        if (source.hand && frame && refSpace && typeof frame.getJointPose === 'function') {
+          try {
+            const wristJoint = source.hand.get('wrist');
+            const wPose = wristJoint ? frame.getJointPose(wristJoint, refSpace) : null;
+            if (!wPose) return;
+            wrist.set(wPose.transform.position.x, wPose.transform.position.y, wPose.transform.position.z);
+            const tips = ['index-finger-tip', 'middle-finger-tip', 'ring-finger-tip', 'pinky-finger-tip'];
+            const extended = tips.filter(name => {
+              const joint = source.hand.get(name);
+              const p = joint ? frame.getJointPose(joint, refSpace) : null;
+              return p && tip.set(p.transform.position.x, p.transform.position.y, p.transform.position.z).distanceTo(wrist) > 0.12;
+            }).length;
+            const key = extended === 1 ? 'solar-system' : extended === 2 ? 'moon' : extended === 3 ? 'mars' : extended === 4 ? 'lunar-rover' : null;
+            if (key && gestureHold.key === key) {
+              gestureHold.time += delta;
+              if (gestureHold.time > 0.55) { gestureHold.time = 0; triggerNav(key, `Hand gesture (${extended} fingers): ${key}`); }
+            } else gestureHold = { key, time: 0 };
+          } catch {}
         }
       });
       controllers.forEach(({ controller }) => {
@@ -64,6 +68,7 @@ export default function VRVoiceGesture(renderer, quickNav, onSelectDestination) 
           if (xOrigin.x < -0.14) { controller.userData.xSwiped = true; triggerNav('solar-system', 'X + Swipe Left: Solar System'); }
           else if (xOrigin.y > 0.14) { controller.userData.xSwiped = true; triggerNav('moon', 'X + Swipe Up: Moon'); }
           else if (xOrigin.x > 0.14) { controller.userData.xSwiped = true; triggerNav('mars', 'X + Swipe Right: Mars'); }
+          else if (xOrigin.y < -0.14) { controller.userData.xSwiped = true; triggerNav('lunar-rover', 'X + Swipe Down: Lunar Rover'); }
         } else if (!xPressed && controller.userData.xPressed && !controller.userData.xSwiped) {
           quickNav.toggleHidden();
         }

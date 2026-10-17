@@ -11,7 +11,8 @@ export default function VRPanel() {
   mesh.position.set(0.85, -0.05, -1.75);
   mesh.rotation.y = -0.25;
   const styles = window.getComputedStyle(document.documentElement);
-  const color = name => `hsl(${styles.getPropertyValue(name).trim()})`;
+  const FALLBACKS = { '--card': '#0d1322', '--primary': '#3c83f6', '--primary-foreground': '#080c16', '--secondary': '#1c2536', '--foreground': '#f1f5f9', '--muted-foreground': '#7588a3' };
+  const color = name => { const v = styles.getPropertyValue(name).trim(); return v ? `hsl(${v.replace(/\s+/g, ', ')})` : (FALLBACKS[name] || '#ffffff'); };
   let titleText = '', rows = [], hovered = -1;
   const rowAt = uv => {
     if (!uv || uv.x < 0.02 || uv.x > 0.98) return -1;

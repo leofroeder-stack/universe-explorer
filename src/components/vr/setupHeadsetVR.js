@@ -20,7 +20,7 @@ export default function setupHeadsetVR(renderer, scene, camera, getOptions = () 
     camera.position.set(0, 0, 0);
     camera.quaternion.identity();
     camera.updateMatrixWorld(true);
-    interaction = VRInteraction(renderer, rig, getOptions);
+    try { interaction = VRInteraction(renderer, rig, getOptions); } catch (e) { console.error('VR init error:', e); }
   };
   const end = () => {
     interaction?.dispose(); interaction = null;
@@ -43,6 +43,6 @@ export default function setupHeadsetVR(renderer, scene, camera, getOptions = () 
     scene.remove(rig);
     controllers.forEach(controller => controller.removeEventListener('connected', connected));
   };
-  cleanup.update = () => { if (renderer.xr.isPresenting) interaction?.update(); };
+  cleanup.update = () => { if (renderer.xr.isPresenting) try { interaction?.update(); } catch (e) { console.error('VR frame error:', e); } };
   return cleanup;
 }
