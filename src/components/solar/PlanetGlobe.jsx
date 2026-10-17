@@ -21,9 +21,11 @@ const DEFAULT_Z = 3.2;
 const MIN_ZOOM = 1.6;
 const MAX_ZOOM = 6.0;
 
-export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody }) {
+export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody, vrActions = [] }) {
   const containerRef = useRef(null);
   const sceneRef = useRef({});
+  const vrOptionsRef = useRef({});
+  vrOptionsRef.current = { title: `${planet.name} Explorer`, itemsLabel: 'Bodies', items: bodies, onSelect: onSelectBody, actions: vrActions };
   const [isLoading, setIsLoading] = useState(true);
   const autoRotRef = useRef(true);
   const idleRef = useRef(null);
@@ -39,6 +41,7 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
     if (!camera) return;
     const start = camera.position.z, t0 = performance.now();
     const tick = (now) => {
+      if (sceneRef.current.renderer?.xr.isPresenting) return;
       const t = Math.min((now - t0) / ms, 1);
       const e = 1 - Math.pow(1 - t, 3);
       camera.position.z = start + (targetZ - start) * e;
@@ -84,7 +87,7 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
     renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
-    const cleanupVR = setupHeadsetVR(renderer, scene, camera);
+    const cleanupVR = setupHeadsetVR(renderer, scene, camera, () => ({ ...vrOptionsRef.current, target: sceneRef.current.globe, pickables: sceneRef.current.markerMeshes || [] }));
 
     scene.add(new THREE.AmbientLight(0x334466, 1.2));
     const sun = new THREE.DirectionalLight(0xfff4e0, 5.5);
@@ -221,6 +224,7 @@ export default function PlanetGlobe({ planet, bodies, selectedBody, onSelectBody
     container.addEventListener('touchend', onTE, { passive: true });
 
     const animate = () => {
+      cleanupVR.update();
       const vel = sceneRef.current.rotVel;
       if (!renderer.xr.isPresenting && !drag) {
         if (autoRotRef.current) {

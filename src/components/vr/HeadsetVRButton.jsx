@@ -32,7 +32,7 @@ export default function HeadsetVRButton({ sceneRef }) {
   };
   return (
     <div className="relative font-body">
-      <button type="button" onClick={toggle} disabled={busy || supported === null} aria-label={session ? 'Exit immersive VR' : 'Enter immersive VR'} title="Look around with your headset. Use the headset system menu to leave VR."
+      <button type="button" onClick={toggle} disabled={busy || supported === null} aria-label={session ? 'Exit immersive VR' : 'Enter immersive VR'} title="Use controller triggers to select menus and markers, squeeze to rotate, left stick to pan, and right stick to zoom and turn."
         className="min-h-11 flex items-center justify-center gap-2 rounded-xl border border-primary/50 bg-card/90 px-3 text-xs font-medium text-primary shadow-lg hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Glasses className="h-4 w-4" />}
         {busy ? 'Connecting…' : session ? 'Exit VR' : 'Enter VR'}

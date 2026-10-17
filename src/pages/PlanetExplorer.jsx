@@ -127,6 +127,7 @@ export default function PlanetExplorer() {
               bodies={filteredBodies}
               selectedBody={selectedBody}
               onSelectBody={handleSelect}
+              vrActions={Object.entries(typeCounts).filter(([, count]) => count > 0).map(([type]) => ({ label: `${activeTypes.includes(type) ? 'On' : 'Off'}: ${type}`, onSelect: () => toggleType(type) }))}
             />
           ) : (
             <div className="w-full h-full overflow-auto p-4">

@@ -170,7 +170,7 @@ export default function SolarSystem() {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     container.appendChild(renderer.domElement);
-    const cleanupVR = setupHeadsetVR(renderer, scene, camera);
+    const cleanupVR = setupHeadsetVR(renderer, scene, camera, () => ({ title: 'Solar System', itemsLabel: 'Planets', items: PLANETS, onSelect: setSelectedPlanet, pickables: sceneRef.current.planetMeshes || [], minDistance: 10, maxDistance: 1500000, actions: [{ label: pausedRef.current ? 'Resume orbits' : 'Pause orbits', onSelect: handlePause }] }));
     sceneRef.current.renderer = renderer;
 
     // ── Near stars (visible at solar system scale) ──────────────────────────
@@ -616,6 +616,7 @@ export default function SolarSystem() {
     sceneRef.current = { scene, camera, renderer, planetMeshes };
 
     const animate = () => {
+      cleanupVR.update();
       // Fade in Milky Way stars as camera pulls back
       const mwVisibility = Math.min(1, Math.max(0, (radius - 800) / 3000));
       mwMat.opacity = mwVisibility * 0.6;

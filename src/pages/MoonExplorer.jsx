@@ -367,6 +367,10 @@ export default function MoonExplorer() {
                   uiHidden={uiHidden}
                   activeScientificLayers={activeScientificLayers}
                   phaseDate={planet === 'moon' ? selectedPhaseDate : null}
+                  vrActions={isHidden('hide_layer_controls') ? [] : [
+                    ...Object.values(LAYER_TYPES).map(key => ({ label: `${activeLayers.includes(key) ? 'On' : 'Off'}: ${key}`, onSelect: () => toggleLayer(key) })),
+                    ...['topography', 'gravity', 'minerals', 'temperature'].map(key => ({ label: `${activeScientificLayers.includes(key) ? 'On' : 'Off'}: ${key}`, onSelect: () => toggleScientificLayer(key) })),
+                  ]}
                 />
               </motion.div>
             ) : (

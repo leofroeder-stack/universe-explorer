@@ -112,9 +112,11 @@ function getPhaseName(phase) {
   return 'Waning Crescent';
 }
 
-export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon', uiHidden = false, activeScientificLayers = [], phaseDate = null }) {
+export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, onAutoSwitch2D, planet = 'moon', uiHidden = false, activeScientificLayers = [], phaseDate = null, vrActions = [] }) {
   const containerRef = useRef(null);
   const sceneRef = useRef({});
+  const vrOptionsRef = useRef({});
+  vrOptionsRef.current = { title: planet === 'mars' ? 'Mars Explorer' : 'Moon Explorer', items: markers, onSelect: onSelectMarker, actions: vrActions };
   const [isLoading, setIsLoading] = useState(true);
   const animatingToMarkerRef = useRef(false);
   const idleTimerRef = useRef(null);
@@ -148,6 +150,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     const startZ = camera.position.z;
     const startTime = performance.now();
     const tick = (now) => {
+      if (sceneRef.current.renderer?.xr.isPresenting) return;
       const t = Math.min((now - startTime) / duration, 1);
       const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
       camera.position.z = startZ + (targetZ - startZ) * ease;
@@ -250,7 +253,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
-    const cleanupVR = setupHeadsetVR(renderer, scene, camera);
+    const cleanupVR = setupHeadsetVR(renderer, scene, camera, () => ({ ...vrOptionsRef.current, target: sceneRef.current.moon, pickables: sceneRef.current.markerMeshes || [] }));
 
     const ambientLight = new THREE.AmbientLight(0x221e3b, 1.2);
     scene.add(ambientLight);
@@ -529,6 +532,7 @@ export default function Moon3DGlobe({ markers, selectedMarker, onSelectMarker, o
 
     let frameCounter = 0;
     const animate = () => {
+      cleanupVR.update();
       const vel = sceneRef.current.rotationVelocity;
 
       if (!renderer.xr.isPresenting && !isDragging && !animatingToMarkerRef.current) {
