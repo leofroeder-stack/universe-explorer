@@ -1,65 +1,48 @@
-import * as THREE from 'three';
 import VRPanel from '@/components/vr/VRPanel';
 import VRMotion from '@/components/vr/VRMotion';
 import VRMenu from '@/components/vr/VRMenu';
 import VRMap from '@/components/vr/VRMap';
 import VRDestinations from '@/components/vr/VRDestinations';
+import VRPointer from '@/components/vr/VRPointer';
+import { Clock } from 'three';
 
 export default function VRInteraction(renderer, rig, getOptions) {
   const destinations = VRDestinations(rig.parent, rig, getOptions);
   const currentOptions = destinations.options;
   const createMap = () => currentOptions().target && currentOptions().target.userData.destination !== 'sun' ? VRMap(rig, currentOptions) : null;
-  let map = createMap();
+  let map = createMap(), pointer = null;
   const selectDestination = key => {
     map?.dispose(); map = null; destinations.select(key); map = createMap(); motion.rebase();
-    controllers.forEach(({ controller }) => { controller.userData.previous = null; controller.userData.dragging = false; });
+    pointer?.controllers.forEach(({ controller }) => { controller.userData.previous = null; controller.userData.dragging = false; });
   };
   const optionsForView = () => ({ ...currentOptions(), destinations: destinations.destinations, selectDestination, map: map?.visible ? map : null, switchView: map ? () => map.toggle() : null });
   const panel = VRPanel(), motion = VRMotion(rig, optionsForView);
   const menu = VRMenu(panel, motion, optionsForView, () => renderer.xr.getSession()?.end());
   rig.add(panel.mesh);
-  const raycaster = new THREE.Raycaster(), rotation = new THREE.Matrix4();
-  const clock = new THREE.Clock();
-  const cast = controller => {
-    rotation.extractRotation(controller.matrixWorld);
-    raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-    raycaster.ray.direction.set(0, 0, -1).applyMatrix4(rotation);
-    const panelHit = raycaster.intersectObject(panel.mesh, false)[0];
-    if (panelHit) return panelHit;
-    const options = currentOptions();
-    return raycaster.intersectObjects(map?.visible ? map.pickables : [...(options.pickables || []), ...(options.target ? [options.target] : [])], false)[0];
-  };
-  const controllers = [0, 1].map(index => {
-    const controller = renderer.xr.getController(index);
-    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0x3c83f6 }));
-    line.scale.z = 5; controller.add(line); rig.add(controller);
-    const handlers = {
-      connected: event => { controller.userData.source = event.data; },
-      disconnected: () => { controller.userData.source = null; controller.userData.dragging = false; },
-      squeezestart: () => { controller.userData.dragging = true; },
-      squeezeend: () => { controller.userData.dragging = false; },
-      selectstart: () => {
-        rig.updateWorldMatrix(true, true);
-        const hit = cast(controller);
-        if (hit?.object === panel.mesh) panel.select(hit.uv);
-        else if (hit) { const item = hit.object.userData.planet || hit.object.userData; if (item.id || item.name) menu.pick(item); }
-      },
-    };
-    Object.entries(handlers).forEach(([event, handler]) => controller.addEventListener(event, handler));
-    return { controller, line, handlers };
+  const clock = new Clock();
+  pointer = VRPointer(renderer, rig, panel, currentOptions, () => map, hit => {
+    if (hit?.object === panel.mesh) { panel.select(hit.uv); menu.refresh(); return; }
+    if (!hit?.item) return;
+    const item = hit.item, dest = item.destination || item.name?.toLowerCase();
+    if (!currentOptions().target && destinations.destinations.some(d => d.key === dest)) {
+      currentOptions().onSelect?.(item);
+      selectDestination(dest);
+      menu.refresh();
+      return;
+    }
+    if (item.id || item.name) { menu.pick(item); menu.refresh(); }
   });
   return {
     update() {
       const delta = Math.min(clock.getDelta(), 0.05);
-      controllers.forEach(({ controller }) => motion.update(controller, delta));
+      pointer.controllers.forEach(({ controller }) => motion.update(controller, delta));
       destinations.update(delta);
-      map?.update(); currentOptions().target?.updateWorldMatrix(true, true);
-      rig.updateWorldMatrix(true, true);
-      controllers.forEach(({ controller, line }) => { line.scale.z = cast(controller)?.distance || 5; });
+      map?.update();
+      pointer.update();
       menu.refresh();
     },
     dispose() {
-      controllers.forEach(({ controller, line, handlers }) => { Object.entries(handlers).forEach(([event, handler]) => controller.removeEventListener(event, handler)); controller.remove(line); rig.remove(controller); line.geometry.dispose(); line.material.dispose(); controller.userData.dragging = false; });
+      pointer.dispose();
       rig.remove(panel.mesh); panel.dispose(); map?.dispose(); destinations.dispose();
     },
   };

@@ -12,8 +12,10 @@ export default function setupHeadsetVR(renderer, scene, camera, getOptions = () 
   let saved = null, interaction = null;
   const start = () => {
     saved = { position: camera.position.clone(), quaternion: camera.quaternion.clone(), parent: camera.parent };
-    rig.position.copy(saved.position);
-    rig.quaternion.copy(saved.quaternion);
+    const vrPos = getOptions().vrPosition;
+    if (vrPos) rig.position.set(vrPos[0], vrPos[1], vrPos[2]);
+    else rig.position.copy(saved.position);
+    rig.quaternion.identity();
     rig.add(camera);
     camera.position.set(0, 0, 0);
     camera.quaternion.identity();

@@ -13,25 +13,45 @@ export default function VRMenu(panel, motion, getOptions, exit) {
   const refresh = () => {
     const options = getOptions();
     let title = options.title || 'Explorer', rows;
-    if (screen === 'home') rows = [row('Explore planets & Solar System', () => open('destinations')), row('View controls', () => open('controls')), ...(options.switchView ? [row(options.map ? 'Switch to 3D globe' : 'Switch to 2D map', options.switchView)] : []), row(options.itemsLabel || 'Locations', () => open('items')), ...(options.actions?.length ? [row('Layers and options', () => open('actions'))] : []), row('Controller help', () => open('help')), row('Exit VR', exit)];
-    else if (screen === 'destinations') { title = 'Choose a destination'; rows = (options.destinations || []).map(destination => row(destination.label, () => { options.selectDestination(destination.key); back(); })); }
-    else if (controls[screen]) { title = 'View controls'; rows = controls[screen].map(([label, action]) => row(label, action)); }
-    else if (screen === 'help') rows = ['Point a controller and press its trigger.', 'Select markers or menu entries.', 'Hold squeeze and move to rotate.', 'Left thumbstick pans the view.', 'Right thumbstick turns and zooms.', 'Use Reset view to return to your start.', 'Headset system menu can also exit VR.'].map(label => row(label));
-    else if (screen === 'items') {
+    if (screen === 'home') {
+      rows = [
+        row('Explore planets & Solar System', () => open('destinations')),
+        ...(options.target ? [row('Solar System overview', () => { options.selectDestination('solar-system'); back(); })] : []),
+        row('View controls', () => open('controls')),
+        ...(options.switchView ? [row(options.map ? 'Switch to 3D globe' : 'Switch to 2D map', options.switchView)] : []),
+        row(options.itemsLabel || 'Locations', () => open('items')),
+        ...(options.actions?.length ? [row('Layers and options', () => open('actions'))] : []),
+        row('Controller help', () => open('help')),
+        row('Exit VR', exit),
+      ];
+    } else if (screen === 'destinations') {
+      title = 'Select Planet or Solar System';
+      rows = (options.destinations || []).map(destination => row(destination.label, () => { options.selectDestination(destination.key); back(); }));
+    } else if (controls[screen]) {
+      title = 'View controls'; rows = controls[screen].map(([label, action]) => row(label, action));
+    } else if (screen === 'help') {
+      rows = ['Point a controller and press trigger.', 'Point at any planet or menu button.', 'Hold squeeze and move to rotate.', 'Left thumbstick pans the view.', 'Right thumbstick turns and zooms.', 'Use Reset view to return to start.', 'Headset system menu can also exit VR.'].map(label => row(label));
+    } else if (screen === 'items') {
       title = options.itemsLabel || 'Locations';
-      rows = (options.items || []).map(item => row(item.name || item.title || item.id, () => pick(item)));
+      rows = (options.items || []).map(item => row(item.name || item.title || item.id, () => {
+        const dest = item.destination || item.name?.toLowerCase();
+        if (!options.target && options.destinations?.some(d => d.key === dest)) { options.onSelect?.(item); options.selectDestination(dest); back(); }
+        else pick(item);
+      }));
       if (!rows.length) rows = [row('No locations match the active layers.')];
-    } else if (screen === 'actions') { title = 'Layers and options'; rows = (options.actions || []).map(action => row(action.label, action.onSelect)); }
-    else {
+    } else if (screen === 'actions') {
+      title = 'Layers and options'; rows = (options.actions || []).map(action => row(action.label, action.onSelect));
+    } else {
       title = selected?.name || selected?.title || 'Details';
-      const text = Object.entries(selected || {}).filter(([key, value]) => key !== 'id' && value != null).map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`).join('  ');
-      rows = (text.match(/.{1,48}(?:\s|$)|\S{1,48}/g) || []).map(label => row(label.trim()));
+      const summary = [selected?.description, ...(selected?.facts || []), selected?.type && `Type: ${selected.type}`, selected?.date && `Date: ${selected.date}`, selected?.agency && `Agency: ${selected.agency}`].filter(Boolean).join(' • ');
+      rows = ((summary || 'Selected item').match(/.{1,48}(?:\s|$)|\S{1,48}/g) || []).slice(0, 7).map(label => row(label.trim()));
       const destination = selected?.destination || selected?.name?.toLowerCase();
       if (options.destinations?.some(entry => entry.key === destination)) rows.unshift(row(`Explore ${selected.name}`, () => { options.selectDestination(destination); back(); }));
     }
-    const pages = Math.max(1, Math.ceil(rows.length / 8)); page = Math.min(page, pages - 1);
-    if (rows.length > 8) {
-      rows = rows.slice(page * 8, page * 8 + 8);
+    const maxPerPage = screen === 'destinations' ? 12 : 9;
+    const pages = Math.max(1, Math.ceil(rows.length / maxPerPage)); page = Math.min(page, pages - 1);
+    if (rows.length > maxPerPage) {
+      rows = rows.slice(page * maxPerPage, page * maxPerPage + maxPerPage);
       if (page > 0) rows.push(row('Previous page', () => { page--; signature = ''; }));
       if (page < pages - 1) rows.push(row('Next page', () => { page++; signature = ''; }));
       title += ` (${page + 1}/${pages})`;
