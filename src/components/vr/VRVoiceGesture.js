@@ -12,7 +12,8 @@ export default function VRVoiceGesture(renderer, quickNav, onSelectDestination) 
   };
   const applyTranscript = text => {
     const t = text.toLowerCase();
-    if (t.includes('solar')) triggerNav('solar-system', 'Voice: Switched to Solar System');
+    if (t.includes('rover') || t.includes('drive')) triggerNav('lunar-rover', 'Voice: Launched Lunar Rover');
+    else if (t.includes('solar')) triggerNav('solar-system', 'Voice: Switched to Solar System');
     else if (t.includes('moon') || t.includes('lunar')) triggerNav('moon', 'Voice: Switched to Moon');
     else if (t.includes('mars')) triggerNav('mars', 'Voice: Switched to Mars');
     else if (t.includes('hide')) quickNav.setState({ hidden: true, statusText: 'Voice: Hidden Quick Nav' });
@@ -44,7 +45,7 @@ export default function VRVoiceGesture(renderer, quickNav, onSelectDestination) 
             const p = frame.getJointPose(source.hand.get(name), refSpace);
             return p && tip.set(p.transform.position.x, p.transform.position.y, p.transform.position.z).distanceTo(wrist) > 0.12;
           }).length;
-          const key = extended === 1 ? 'solar-system' : extended === 2 ? 'moon' : extended === 3 ? 'mars' : null;
+          const key = extended === 1 ? 'solar-system' : extended === 2 ? 'moon' : extended === 3 ? 'mars' : extended === 4 ? 'lunar-rover' : null;
           if (key && gestureHold.key === key) {
             gestureHold.time += delta;
             if (gestureHold.time > 0.55) { gestureHold.time = 0; triggerNav(key, `Hand gesture (${extended} fingers): ${key}`); }

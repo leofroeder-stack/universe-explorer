@@ -43,6 +43,7 @@ export default function VRMotion(rig, getOptions) {
       const axes = source?.gamepad?.axes || [];
       const x = Math.abs(axes[axes.length - 2] || 0) > 0.15 ? axes[axes.length - 2] : 0;
       const y = Math.abs(axes[axes.length - 1] || 0) > 0.15 ? axes[axes.length - 1] : 0;
+      if (getOptions().onDrive && (x || y)) { getOptions().onDrive(-y, x, delta); return; }
       if (source?.handedness === 'left') pan(x * delta, -y * delta);
       else { rotate(-x * delta); zoom(y * delta); }
       if (controller.userData.dragging) {

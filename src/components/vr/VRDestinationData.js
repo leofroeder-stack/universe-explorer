@@ -9,6 +9,7 @@ export const VR_WORLDS = {
 };
 export const VR_DESTINATIONS = [
   { key: 'original', label: 'Return to original view' },
+  { key: 'lunar-rover', label: 'Lunar Rover Explorer (Moon Surface)' },
   { key: 'solar-system', label: 'Solar System' },
   ...Object.entries(VR_WORLDS).map(([key, world]) => ({ key, label: world.name })),
 ];

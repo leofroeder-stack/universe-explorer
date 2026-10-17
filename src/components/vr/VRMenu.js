@@ -16,6 +16,7 @@ export default function VRMenu(panel, motion, getOptions, exit) {
     if (screen === 'home') {
       rows = [
         row('Explore planets & Solar System', () => open('destinations')),
+        row('Lunar Rover Explorer (Drive on Moon)', () => { options.selectDestination('lunar-rover'); back(); }),
         ...(options.target ? [row('Solar System overview', () => { options.selectDestination('solar-system'); back(); })] : []),
         row('View controls', () => open('controls')),
         ...(options.switchView ? [row(options.map ? 'Switch to 3D globe' : 'Switch to 2D map', options.switchView)] : []),
