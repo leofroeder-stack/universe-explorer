@@ -13,7 +13,8 @@ export default function VRMenu(panel, motion, getOptions, exit) {
   const refresh = () => {
     const options = getOptions();
     let title = options.title || 'Explorer', rows;
-    if (screen === 'home') rows = [row('View controls', () => open('controls')), ...(options.switchView ? [row(options.map ? 'Switch to 3D globe' : 'Switch to 2D map', options.switchView)] : []), row(options.itemsLabel || 'Locations', () => open('items')), ...(options.actions?.length ? [row('Layers and options', () => open('actions'))] : []), row('Controller help', () => open('help')), row('Exit VR', exit)];
+    if (screen === 'home') rows = [row('Explore planets & Solar System', () => open('destinations')), row('View controls', () => open('controls')), ...(options.switchView ? [row(options.map ? 'Switch to 3D globe' : 'Switch to 2D map', options.switchView)] : []), row(options.itemsLabel || 'Locations', () => open('items')), ...(options.actions?.length ? [row('Layers and options', () => open('actions'))] : []), row('Controller help', () => open('help')), row('Exit VR', exit)];
+    else if (screen === 'destinations') { title = 'Choose a destination'; rows = (options.destinations || []).map(destination => row(destination.label, () => { options.selectDestination(destination.key); back(); })); }
     else if (controls[screen]) { title = 'View controls'; rows = controls[screen].map(([label, action]) => row(label, action)); }
     else if (screen === 'help') rows = ['Point a controller and press its trigger.', 'Select markers or menu entries.', 'Hold squeeze and move to rotate.', 'Left thumbstick pans the view.', 'Right thumbstick turns and zooms.', 'Use Reset view to return to your start.', 'Headset system menu can also exit VR.'].map(label => row(label));
     else if (screen === 'items') {
@@ -25,6 +26,8 @@ export default function VRMenu(panel, motion, getOptions, exit) {
       title = selected?.name || selected?.title || 'Details';
       const text = Object.entries(selected || {}).filter(([key, value]) => key !== 'id' && value != null).map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`).join('  ');
       rows = (text.match(/.{1,48}(?:\s|$)|\S{1,48}/g) || []).map(label => row(label.trim()));
+      const destination = selected?.destination || selected?.name?.toLowerCase();
+      if (options.destinations?.some(entry => entry.key === destination)) rows.unshift(row(`Explore ${selected.name}`, () => { options.selectDestination(destination); back(); }));
     }
     const pages = Math.max(1, Math.ceil(rows.length / 8)); page = Math.min(page, pages - 1);
     if (rows.length > 8) {

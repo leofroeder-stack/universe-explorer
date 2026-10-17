@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 
 export default function VRMotion(rig, getOptions) {
-  const origin = rig.position.clone(), orientation = rig.quaternion.clone();
-  const targetRotation = getOptions().target?.rotation.clone();
+  let origin = rig.position.clone(), orientation = rig.quaternion.clone();
+  let targetRotation = getOptions().target?.rotation.clone();
   const up = new THREE.Vector3(0, 1, 0);
   const rotate = (x, y = 0) => {
     if (getOptions().map) { getOptions().map.pan(x, y); return; }
@@ -32,6 +32,7 @@ export default function VRMotion(rig, getOptions) {
   };
   return {
     rotate, pan, zoom,
+    rebase() { origin = rig.position.clone(); orientation = rig.quaternion.clone(); targetRotation = getOptions().target?.rotation.clone(); },
     reset() {
       getOptions().map?.reset();
       rig.position.copy(origin); rig.quaternion.copy(orientation);

@@ -3,10 +3,18 @@ import VRPanel from '@/components/vr/VRPanel';
 import VRMotion from '@/components/vr/VRMotion';
 import VRMenu from '@/components/vr/VRMenu';
 import VRMap from '@/components/vr/VRMap';
+import VRDestinations from '@/components/vr/VRDestinations';
 
 export default function VRInteraction(renderer, rig, getOptions) {
-  const map = getOptions().target ? VRMap(rig, getOptions) : null;
-  const optionsForView = () => ({ ...getOptions(), map: map?.visible ? map : null, switchView: map ? () => map.toggle() : null });
+  const destinations = VRDestinations(rig.parent, rig, getOptions);
+  const currentOptions = destinations.options;
+  const createMap = () => currentOptions().target && currentOptions().target.userData.destination !== 'sun' ? VRMap(rig, currentOptions) : null;
+  let map = createMap();
+  const selectDestination = key => {
+    map?.dispose(); map = null; destinations.select(key); map = createMap(); motion.rebase();
+    controllers.forEach(({ controller }) => { controller.userData.previous = null; controller.userData.dragging = false; });
+  };
+  const optionsForView = () => ({ ...currentOptions(), destinations: destinations.destinations, selectDestination, map: map?.visible ? map : null, switchView: map ? () => map.toggle() : null });
   const panel = VRPanel(), motion = VRMotion(rig, optionsForView);
   const menu = VRMenu(panel, motion, optionsForView, () => renderer.xr.getSession()?.end());
   rig.add(panel.mesh);
@@ -18,7 +26,7 @@ export default function VRInteraction(renderer, rig, getOptions) {
     raycaster.ray.direction.set(0, 0, -1).applyMatrix4(rotation);
     const panelHit = raycaster.intersectObject(panel.mesh, false)[0];
     if (panelHit) return panelHit;
-    const options = getOptions();
+    const options = currentOptions();
     return raycaster.intersectObjects(map?.visible ? map.pickables : [...(options.pickables || []), ...(options.target ? [options.target] : [])], false)[0];
   };
   const controllers = [0, 1].map(index => {
@@ -44,14 +52,15 @@ export default function VRInteraction(renderer, rig, getOptions) {
     update() {
       const delta = Math.min(clock.getDelta(), 0.05);
       controllers.forEach(({ controller }) => motion.update(controller, delta));
-      map?.update(); getOptions().target?.updateWorldMatrix(true, true);
+      destinations.update(delta);
+      map?.update(); currentOptions().target?.updateWorldMatrix(true, true);
       rig.updateWorldMatrix(true, true);
       controllers.forEach(({ controller, line }) => { line.scale.z = cast(controller)?.distance || 5; });
       menu.refresh();
     },
     dispose() {
       controllers.forEach(({ controller, line, handlers }) => { Object.entries(handlers).forEach(([event, handler]) => controller.removeEventListener(event, handler)); controller.remove(line); rig.remove(controller); line.geometry.dispose(); line.material.dispose(); controller.userData.dragging = false; });
-      rig.remove(panel.mesh); panel.dispose(); map?.dispose();
+      rig.remove(panel.mesh); panel.dispose(); map?.dispose(); destinations.dispose();
     },
   };
 }
